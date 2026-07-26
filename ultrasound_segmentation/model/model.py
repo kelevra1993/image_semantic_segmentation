@@ -112,6 +112,8 @@ class UnetModel(nn.Module):
         self.encoder_output_channels = []
 
         for key, convolution_block_information in blocks_configuration.items():
+            # key : [number_of_layers, channels]
+            # Example 1 : [1, 32]
             number_of_layers, channels = convolution_block_information
             self.encoder_blocks.append(ConvolutionBlock(
                 input_channels=current_input_channels,
@@ -129,19 +131,25 @@ class UnetModel(nn.Module):
         reversed_keys = keys[::-1]
 
         for index in range(len(reversed_keys) - 1):
+            # Same process as for downsampling we just go through the downsampling architecture in reverse
             input_channel_count = self.encoder_output_channels[-(index + 1)]
             output_channel_count = self.encoder_output_channels[-(index + 2)]
 
-            self.up_convolutions.append(
-                nn.ConvTranspose2d(input_channel_count, output_channel_count, kernel_size=2, stride=2)
-            )
+            self.up_convolutions.append(nn.ConvTranspose2d(input_channel_count,
+                                                           output_channel_count,
+                                                           kernel_size=2, stride=2))
 
             number_of_layers, _ = blocks_configuration[str(reversed_keys[index + 1])]
-            self.decoder_blocks.append(
-                ConvolutionBlock(output_channel_count * 2, output_channel_count, number_of_layers)
-            )
 
-        self.final_convolution = nn.Conv2d(self.encoder_output_channels[0], output_channels, kernel_size=1)
+            # Here the x2 comes from the fact that we are concatenating channels
+            self.decoder_blocks.append(ConvolutionBlock(output_channel_count * 2,
+                                                        output_channel_count,
+                                                        number_of_layers))
+
+        # Final layer before predictions
+        self.final_convolution = nn.Conv2d(self.encoder_output_channels[0],
+                                           output_channels,
+                                           kernel_size=1)
 
     def forward(self, input_tensor: torch.Tensor) -> torch.Tensor:
         """
@@ -154,15 +162,24 @@ class UnetModel(nn.Module):
             torch.Tensor: The predicted output segmentation mask.
         """
         encoder_features = []
-
+        # Downsampling
         for index, block in enumerate(self.encoder_blocks):
+            # Forward pass
             input_tensor = block(input_tensor)
+
+            # Kept for later concatenation
             encoder_features.append(input_tensor)
+
+            # We do not pool the last downsampling layer
             if index < len(self.encoder_blocks) - 1:
                 input_tensor = self.pooling_layer(input_tensor)
 
+        # Upsampling
         for index in range(len(self.decoder_blocks)):
+            # First upsample input
             input_tensor = self.up_convolutions[index](input_tensor)
+
+            # Get corresponding skip connection for concatenation
             skip_connection_feature = encoder_features[-(index + 2)]
 
             # Handle potential dimension mismatch (can happen with maxpooling if input isn't a power of 2)
@@ -170,12 +187,11 @@ class UnetModel(nn.Module):
                 input_tensor = functional.interpolate(
                     input_tensor,
                     size=skip_connection_feature.shape[2:],
-                    mode='bilinear',
-                    align_corners=True
-                )
+                    mode='bilinear', align_corners=True)
 
             input_tensor = torch.cat([skip_connection_feature, input_tensor], dim=1)
             input_tensor = self.decoder_blocks[index](input_tensor)
 
-        input_tensor = self.final_convolution(input_tensor)
-        return input_tensor
+        output_tensor = self.final_convolution(input_tensor)
+
+        return output_tensor
