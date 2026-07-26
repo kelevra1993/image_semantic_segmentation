@@ -105,11 +105,36 @@ class AnnotationsConverter():
 
         return mask
 
-    def show_mask(self, multiplier=50, window_name="Image Mask"):
-        """Displays the generated neural network mask in a window."""
+    def show_mask(self, multiplier=30, window_name="Image Mask"):
+        """
+        Displays the generated neural network mask in a local GUI window for visual inspection.
+
+        Args:
+            multiplier (int, optional): A scaling factor applied to the mask pixel values to enhance 
+                visibility on screen. Defaults to 30.
+            window_name (str, optional): The title of the OpenCV window. Defaults to "Image Mask".
+        """
         cv2.imshow(window_name, self.neural_network_mask * multiplier)
         cv2.waitKey(0)
 
-    def save_mask(self, output_file_path: str):
-        """Saves the generated neural network mask to the specified file path."""
+    def save_mask(self, output_file_path: str, add_interpretable_version: bool = False, multiplier=30):
+        """
+        Saves the generated neural network mask to disk in PNG format for downstream model training and interpretation.
+
+        Args:
+            output_file_path (str): The absolute or relative file path where the model-ready 
+                mask should be saved.
+            add_interpretable_version (bool, optional): If True, a second scaled version of the mask 
+                is saved alongside the original to facilitate human review. Defaults to False.
+            multiplier (int, optional): The scaling factor applied to pixel values for the 
+                human-interpretable version. Defaults to 30.
+        """
         cv2.imwrite(filename=output_file_path, img=self.neural_network_mask, params=[cv2.IMWRITE_PNG_COMPRESSION, 0])
+
+        if add_interpretable_version:
+            # human interpretable_version
+            output_file_name = f"human_interpretable_{os.path.basename(output_file_path)}"
+            human_interpretable_mask = self.neural_network_mask * multiplier
+            human_interpretable_output_file_path = os.path.join(os.path.dirname(output_file_path), output_file_name)
+            cv2.imwrite(filename=human_interpretable_output_file_path,
+                        img=human_interpretable_mask, params=[cv2.IMWRITE_PNG_COMPRESSION, 0])

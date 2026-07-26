@@ -1,5 +1,4 @@
 import os
-from imaplib import Literal
 
 from annotations.annotations_converter import AnnotationsConverter
 
@@ -12,7 +11,7 @@ bacteria_path = os.path.join(dataset_directory, "bacteria.png")
 annotation_path = os.path.join(dataset_directory, "annotations.json")
 
 # Setup Desired Label Dictionary {class_name: class_index_in_mask}
-label_dictionary = {"membrane": 0, "bacteria": 1, "unsure": 2}
+label_dictionary = {"membrane": 1, "bacteria": 2, "unsure": 3}
 
 # Based on some ambiguity in the annotation interpretation, i chose to implement two interpretations.
 # Naive interpretation -> Set up regions in the order they were labeled
@@ -26,8 +25,8 @@ for interpretation in ["ambiguous", "naive"]:
 
     # Define where to save the masks
     mask_path = os.path.join(dataset_directory, f"{interpretation}_mask_annotations.png")
-    annotations.save_mask(output_file_path=mask_path)
+    annotations.save_mask(output_file_path=mask_path, add_interpretable_version=True)
 
     # Display Mask For Visualisation
     # For viewing purposes we scale the values of the mask by the multiplier
-    annotations.show_mask(window_name=f"{interpretation} Mask", multiplier=50)
+    annotations.show_mask(window_name=f"{interpretation} Mask", multiplier=40)
