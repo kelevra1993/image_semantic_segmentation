@@ -99,8 +99,8 @@ class UnetModel(nn.Module):
         super().__init__()
 
         # Get input and output channels from the configuration file
-        input_channels = unet_configuration.get('input_channels')
-        output_channels = unet_configuration.get('output_channels')
+        input_channels = unet_configuration['input_channels']
+        output_channels = unet_configuration['output_channels']
 
         # Definition of downsampling encoder
         self.encoder_blocks = nn.ModuleList()
