@@ -1,8 +1,7 @@
 import os
 import cv2
 import numpy as np
-from pathlib import Path
-from typing import Dict, List, Tuple, Literal
+from typing import Dict, List, Literal
 from shapely.geometry import Polygon
 
 from utilities.os_utilities import read_json
