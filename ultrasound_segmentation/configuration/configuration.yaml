@@ -1,12 +1,12 @@
 ExperimentConfiguration:
-  project_root: ""
-  dataset_folder: ""
+  project_root: "/home/robert_kelevra/Projects/bacteria_biology/experiments_folder"
+  dataset_folder: "/home/robert_kelevra/Projects/bacteria_biology/utilities/ultrasound_dataset/preprocessed_512_KAR"
   information_dump: 500
   weight_saving_iterations: 2000
   number_iterations: 1e6
   learning_rate: 2.0e-4
   loss: "focal_loss"
-  dtype: "float64"
+  dtype: "float32"
   batch_size: 8
   compute_validation_iteration: True
   resume_training: True

@@ -30,11 +30,50 @@ def read_json(json_path: str) -> Dict[str, Any]:
     return data
 
 
-def make_directory(directory_path: str):
+def save_json(data: Dict[str, Any], file_path: str | Path) -> None:
+    """
+    Saves a dictionary as a JSON file at the specified path.
+
+    Args:
+        data (Dict[str, Any]): The dictionary data to serialize.
+        file_path (str | Path): The destination path for the JSON file.
+
+    Returns:
+        None
+    """
+    with open(file_path, 'w') as output_file:
+        json.dump(data, output_file, indent=4)
+
+
+def make_directory(directory_path: str | Path) -> None:
+    """
+    Creates a directory and any necessary parent directories.
+    Does not raise an error if the directory already exists.
+
+    Args:
+        directory_path (str | Path): The path of the directory to create.
+
+    Returns:
+        None
+    """
     os.makedirs(directory_path, exist_ok=True)
 
 
-def get_images(path, basename=False, sort=False, mix=False, coherence=False):
+def get_images(path: str | Path, basename: bool = False, sort: bool = False, mix: bool = False,
+               coherence: bool = False) -> list[str]:
+    """
+    Retrieves a list of image files from a specified directory.
+
+    Args:
+        path (str | Path): The directory path containing the images.
+        basename (bool): If True, returns only the filenames instead of absolute paths. Defaults to False.
+        sort (bool): If True, sorts the resulting list alphabetically. Defaults to False.
+        mix (bool): If True, randomly shuffles the resulting list. Defaults to False.
+        coherence (bool): If True, filters out files that are empty (0 bytes). Defaults to False.
+
+    Returns:
+        list[str]: A list of paths (or basenames) to the found image files.
+    """
     if coherence:
         if basename:
             images = [file for file in os.listdir(path) if
@@ -211,7 +250,23 @@ def load_configuration(configuration_path: str | Path) -> Dict[str, Any]:
 
 def load_experiment_configuration(configuration_path: str | Path) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     """
-    todo update documentation
+    Loads a YAML configuration file, extracting the experiment-specific settings
+    and leaving the remainder as model-specific settings.
+
+    This function automatically casts certain keys to their correct Python types 
+    (e.g., Paths, integers, floats, torch dtypes). It also creates the project 
+    root directory and saves a backup of the configuration file inside it.
+
+    Args:
+        configuration_path (str | Path): The file path to the YAML configuration.
+
+    Returns:
+        Tuple[Dict[str, Any], Dict[str, Any]]: A tuple containing two dictionaries:
+            - experiment_configuration: Settings strictly related to training parameters.
+            - model_configuration: Settings strictly related to the model architecture.
+
+    Raises:
+        KeyError: If the 'ExperimentConfiguration' key is missing from the YAML file.
     """
     configuration = load_configuration(configuration_path)
     if "ExperimentConfiguration" not in configuration:
