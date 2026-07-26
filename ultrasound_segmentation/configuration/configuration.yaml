@@ -1,11 +1,12 @@
 ExperimentConfiguration:
-  data_folder: "/home/robert_kelevra/Data/protein_project/protein_data/openfold_data"
-  dataset_folder: "/home/robert_kelevra/Data/protein_project/protein_experiments"
+  project_root: ""
+  dataset_folder: ""
   information_dump: 500
   weight_saving_iterations: 2000
   number_iterations: 1e6
   learning_rate: 2.0e-4
   loss: "focal_loss"
+  dtype: "float64"
 
 UnetConfiguration:
   input_channels: 1
