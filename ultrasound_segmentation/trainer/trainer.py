@@ -9,124 +9,73 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tqdm import tqdm
 from pathlib import Path
-from typing import Dict, Any, Optional
-
+from typing import Dict, Any, Optional, Tuple
 
 from utilities.os_utilities import load_configuration, print_red, print_green, print_blue, print_yellow
 from utilities.tensor_utilities import get_device, print_tensor_status, print_tensor_list
-
-
-
+from ultrasound_segmentation.model.model import UnetModel
+from utilities.data_utilities.dataloader import get_dataloaders
+from torch.utils.data import DataLoader
+import torch.nn as nn
 
 class Trainer:
     """
-    The Trainer class orchestrates the entire training lifecycle of the AlphaFold II model.
+    The Trainer class orchestrates the entire training lifecycle of the U-Net model.
     It manages data loading, model initialization, optimization, validation, checkpointing,
     and logging to TensorBoard.
-
-    This class serves as the central hub for executing training runs, ensuring that all
-    components (model, data, optimizer) are correctly coordinated and that progress
-    is tracked systematically.
     """
 
-    def __init__(self, project_root: Path, model_configuration: Dict[str, Any], data_folder: Path,
-                 train_split_file: Path, validation_split_file: Path, test_split_file: Path,
-                 number_iterations: int, weight_saving_iterations: int,
-                 compute_validation_iteration: bool,
-                 learning_rate: float,
-                 dtype: torch.dtype,
-                 information_dump: int,
-                 resume_training: bool,
-                 precompute_data: bool,
-                 experiment_name: str,
-                 precomputed_samples: int):
+    def __init__(self, experiment_configuration: Dict[str, Any], model_configuration: Dict[str, Any]) -> None:
         """
         Initializes the Trainer with all necessary components for a training run.
 
         Args:
-            project_root (Path): The root directory where training outputs (weights, logs) will be saved.
-            model_configuration (Dict[str, Any]): Dictionary containing model and data parameters.
-            data_folder (Path): Root directory containing the processed protein data (structures, records, msa).
-            train_split_file (Path): Path to the JSON file defining the training dataset split.
-            validation_split_file (Path): Path to the JSON file defining the validation dataset split.
-            test_split_file (Path): Path to the JSON file defining the test dataset split.
-            number_iterations (int): Total number of training iterations to perform.
-            weight_saving_iterations (int): Interval (in iterations) at which to save model weights.
-            compute_validation_iteration (bool): If True, performs a validation step during each training iteration.
-            learning_rate (float): Initial learning rate for the Adam optimizer.
-            dtype (torch.dtype): Data type to be used for all model tensors (e.g., torch.float32 or torch.float64).
-            information_dump (int): Interval at which rolling average metrics are printed to the console.
-            resume_training (bool): If True, restores the model and optimizer state from the last checkpoint.
-            precompute_data (bool): Whether to use precomputed data loaders.
-            experiment_name (str): The name of the experiment.
-            precomputed_samples (int): Number of precomputed samples available per protein.
+            experiment_configuration (Dict[str, Any]): Dictionary containing the core training parameters.
+            model_configuration (Dict[str, Any]): Dictionary containing the model architecture parameters.
         """
-        # Get device and dtype
+        self.experiment_configuration = experiment_configuration
+        self.model_configuration = model_configuration
+
         self.device = get_device()
-        self.dtype = dtype
+        self.dtype = self.experiment_configuration["dtype"]
 
         print(f"For Training We Will Be Using device: {self.device}")
 
-        # Basic training parameters
-        self.project_root = project_root
-        self.training_iterations = number_iterations
-        self.weight_saving_iterations = weight_saving_iterations
-        self.compute_validation_iteration = compute_validation_iteration
-        self.information_dump = information_dump
-        self.learning_rate = learning_rate
+        # Basic training parameters (strictly enforced)
+        self.project_root = self.experiment_configuration["project_root"]
+        self.training_iterations = self.experiment_configuration["number_iterations"]
+        self.weight_saving_iterations = self.experiment_configuration["weight_saving_iterations"]
+        self.information_dump = self.experiment_configuration["information_dump"]
+        self.learning_rate = self.experiment_configuration["learning_rate"]
+        
+        self.batch_size = self.experiment_configuration["batch_size"]
+        self.compute_validation_iteration = self.experiment_configuration["compute_validation_iteration"]
+        self.resume_training = self.experiment_configuration["resume_training"]
 
-        # Root where training will be performed
-        # Will contain tensorboard logs
-        # Will contain weights
-        # Will contain model outputs for debugging
+        # Setup paths and tensorboard
         self.tensorboard_directory, self.weights_directory, self.metric_evolution_csv_file = self.setup_training_paths()
-
-        # Setup writers
         self.training_writer, self.validation_writer = self.setup_tensorboard_writers()
 
-        # Load Training Configuration containing all the training parameters
-        self.model_configuration = model_configuration
-
         # Setting up dataloaders
-        self.data_folder = data_folder
-        self.train_split_file = train_split_file
-        self.validation_split_file = validation_split_file
-        self.test_split_file = test_split_file
-
-        self.precompute_data = precompute_data
-        self.precomputed_directory = self.data_folder / experiment_name if self.precompute_data else None
-        self.precomputed_samples = precomputed_samples
-
-        # Get data loaders depending on the whether we used precomputation or not.
+        self.dataset_folder = self.experiment_configuration["dataset_folder"]
         self.train_dataloader, self.validation_dataloader, self.test_dataloader = self.get_trainer_data_loaders()
 
-        # Initialize Model and Optimizer
-        self.model = Model(configuration=self.model_configuration, device=self.device, dtype=self.dtype)
+        # Initialize Model (U-Net) and Optimizer
+        self.model = UnetModel(unet_configuration=self.model_configuration["UnetConfiguration"])
         self.model.to(device=self.device, dtype=self.dtype)
 
-        # Setting Up The Optimizer
-        self.optimizer = optim.Adam(self.model.parameters(),
-                                    lr=self.learning_rate)
+        self.optimizer = optim.Adam(self.model.parameters(), lr=self.learning_rate)
+        self.criterion = nn.BCEWithLogitsLoss()
 
         # Restoration logic
         self.start_iteration = 1
-        if resume_training:
+        if self.resume_training:
             self.start_iteration = self.restore_last_model()
 
-        # Metric names mapping for logging and tracking
+        # Metric tracking
         self.tracked_metrics_mapping = {
-            "total_loss": "Total Loss",
-            "fape_loss": "Frame Aligned Point Error Loss",
-            "auxillary_loss": "Auxillary Loss",
-            "lddt_loss": "Local Distance Difference Test Loss",
-            "distogram_loss": "Distogram Loss",
-            "peptide_linker_loss": "Peptide Linker Loss",
-            "lddt_metric": "True lDDT Metric",
-            "unclamped_fape": "Unclamped Physical FAPE Metric"
+            "total_loss": "Total BCE Loss",
         }
-
-        # Print Model Size
-        self.print_model_size()
 
     def setup_training_paths(self) -> tuple[Path, Path, Path]:
         """
@@ -175,233 +124,59 @@ class Trainer:
 
         return training_writer, validation_writer
 
-    def get_trainer_data_loaders(self):
+    def get_trainer_data_loaders(self) -> Tuple[DataLoader, DataLoader, DataLoader]:
         """
-        Initializes and returns the dataloaders for the training, validation, and test phases.
-
-        This method acts as a factory, deciding whether to load the standard runtime
-        dataloaders (which perform MSA clustering, cropping, and feature extraction dynamically)
-        or the precomputed dataloaders (which load pre-processed `.pt` tensors directly from disk
-        for maximum training speed), based on the `precompute_data` flag.
+        Initializes and returns the PyTorch DataLoaders for the training, validation, and test phases.
 
         Returns:
-            Tuple[DataLoader, DataLoader, DataLoader]: A tuple containing:
-                - train_dataloader: The dataloader for the training split.
-                - validation_dataloader: The dataloader for the validation split.
-                - test_dataloader: The dataloader for the test split.
+            Tuple[DataLoader, DataLoader, DataLoader]: A tuple containing the DataLoaders for
+                the training, validation, and testing splits, respectively.
         """
-
-        # Setup training, validation, and test dataloaders
-        if self.precompute_data:
-            print_blue("Using Precomputed DataLoaders.", add_separators=True)
-            train_dataloader = get_precomputed_dataloader(
-                precomputed_directory=str(self.precomputed_directory), split_file_path=str(self.train_split_file),
-                phase="Train", existing_precomputed_samples=self.precomputed_samples,
-                batch_size=self.model_configuration["TrainDataConfiguration"]["batch_size"],
-                num_workers=0, shuffle=self.model_configuration["TrainDataConfiguration"]["shuffle"])
-
-            validation_dataloader = get_precomputed_dataloader(
-                precomputed_directory=str(self.precomputed_directory), split_file_path=str(self.validation_split_file),
-                phase="Validation", existing_precomputed_samples=self.precomputed_samples,
-                batch_size=self.model_configuration["ValidationDataConfiguration"]["batch_size"],
-                num_workers=0, shuffle=self.model_configuration["ValidationDataConfiguration"]["shuffle"])
-
-            test_dataloader = get_precomputed_dataloader(
-                precomputed_directory=str(self.precomputed_directory), split_file_path=str(self.test_split_file),
-                phase="Test", existing_precomputed_samples=self.precomputed_samples,
-                batch_size=self.model_configuration["TestDataConfiguration"]["batch_size"],
-                num_workers=0, shuffle=self.model_configuration["TestDataConfiguration"]["shuffle"])
-        else:
-            print_yellow("Using Standard RunTime DataLoaders.", add_separators=True)
-            train_dataloader = get_dataloader(
-                data_folder=str(self.data_folder),
-                model_configuration=self.model_configuration,
-                split_path=str(self.train_split_file),
-                phase="Train",
-                device=self.device,
-                dtype=self.dtype)
-
-            validation_dataloader = get_dataloader(
-                data_folder=str(self.data_folder),
-                model_configuration=self.model_configuration,
-                split_path=str(self.validation_split_file),
-                phase="Validation",
-                device=self.device,
-                dtype=self.dtype)
-
-            test_dataloader = get_dataloader(
-                data_folder=str(self.data_folder),
-                model_configuration=self.model_configuration,
-                split_path=str(self.test_split_file),
-                phase="Test",
-                device=self.device,
-                dtype=self.dtype)
-
+        print_blue("Initializing U-Net DataLoaders...", add_separators=True)
+        
+        train_dataloader, validation_dataloader, test_dataloader = get_dataloaders(
+            preprocessed_directory=self.dataset_folder,
+            configuration=self.model_configuration,
+            batch_size=self.batch_size,
+            number_of_workers=4
+        )
+        
         return train_dataloader, validation_dataloader, test_dataloader
-
-    def set_input_dictionary_device(self, input_dictionary: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
-        """
-        Moves all tensors within the input feature dictionary to the target computation device.
-
-        This ensures that all input data (features, ground truth labels, masks)
-        are loaded onto the correct computation device (e.g., CPU, CUDA, MPS) prior
-        to being passed to the model for forward propagation, keeping it consistent
-        with the model's location.
-
-        Args:
-            input_dictionary (Dict[str, torch.Tensor]): A dictionary containing input features and labels.
-                Contains tensors with shapes such as:
-                - input_msa_feature: (batch_size, number_clusters, number_residues, msa_feature_dimension, number_cycles)
-                - input_extra_msa_feature: (batch_size, number_extra_sequences, number_residues, input_extra_msa_feature_dimension, number_cycles)
-                - input_sequence_feature: (batch_size, number_residues, input_sequence_feature_dimension)
-                - input_residue_index_feature: (batch_size, number_residues)
-                - ground_truth_frames: (batch_size, number_residues, 8, 4, 4)
-                - ground_truth_angles: (batch_size, number_residues, 7, 2)
-                - ground_truth_global_positions: (batch_size, number_residues, 37, 3)
-                - distogram_labels: (batch_size, number_residues, number_residues)
-
-        Returns:
-            Dict[str, torch.Tensor]: The same dictionary with all its tensor values moved to
-                the active computation device.
-        """
-        for key in list(input_dictionary.keys()):
-            input_dictionary[key] = input_dictionary[key].to(self.device)
-
-        return input_dictionary
-
-    def set_input_dictionary_dtype(self, input_dictionary):
-        """
-        Casts specific continuous-valued tensors within the input dictionary to the configured dtype.
-
-        While discrete indices (like residue or token indices) remain as integers, continuous
-        features and coordinates must be explicitly cast to the model's configured floating-point
-        type (e.g., torch.float32, torch.float64) to ensure cross-platform compatibility and
-        prevent type mismatch errors during computation. The 'sequence_labels' are explicitly
-        cast to torch.int64.
-
-        Args:
-            input_dictionary (Dict[str, torch.Tensor]): A dictionary containing input features and labels.
-                Contains tensors with shapes such as:
-                - input_msa_feature: (batch_size, number_clusters, number_residues, msa_feature_dimension, number_cycles)
-                - input_extra_msa_feature: (batch_size, number_extra_sequences, number_residues, input_extra_msa_feature_dimension, number_cycles)
-                - input_sequence_feature: (batch_size, number_residues, input_sequence_feature_dimension)
-                - ground_truth_global_positions: (batch_size, number_residues, 37, 3)
-                - ground_truth_frames: (batch_size, number_residues, 8, 4, 4)
-                - ground_truth_angles: (batch_size, number_residues, 7, 2)
-                - alternative_ground_truth_global_positions: (batch_size, number_residues, 37, 3)
-                - alternative_ground_truth_frames: (batch_size, number_residues, 8, 4, 4)
-                - alternative_ground_truth_angles: (batch_size, number_residues, 7, 2)
-                - sequence_labels: (batch_size, number_residues)
-
-        Returns:
-            Dict[str, torch.Tensor]: The dictionary with targeted tensors cast to the correct dtype.
-                Output tensor shapes remain identical to the input tensor shapes.
-        """
-        for key in ["input_msa_feature", "input_extra_msa_feature", "input_sequence_feature",
-                    "ground_truth_global_positions", "ground_truth_frames", "ground_truth_angles",
-                    "alternative_ground_truth_global_positions", "alternative_ground_truth_frames",
-                    "alternative_ground_truth_angles"]:
-            input_dictionary[key] = input_dictionary[key].to(self.dtype)
-
-        input_dictionary["sequence_labels"] = input_dictionary["sequence_labels"].to(torch.int64)
-        input_dictionary["distogram_labels"] = input_dictionary["distogram_labels"].to(torch.int64)
-
-        return input_dictionary
-
-    def run_benchmarking_training_loop(self, number_iterations=100000):
-        """
-        Executes a high-repetition loop to benchmark the model's performance.
-
-        This method is designed for performance profiling and benchmarking. It repeatedly
-        performs a single forward pass (via `run_model_iteration`) for a specified number
-        of iterations, utilizing only the training dataloader. Unlike the standard
-        `run_training_loop`, it does not perform backpropagation, optimizer updates,
-        validation steps, or weight saving, focusing solely on the raw execution
-        speed of the model's forward pass and loss calculation logic.
-
-        The loop will automatically exit the application upon completion.
-
-        Args:
-            number_iterations (int): The total number of benchmark iterations to perform.
-                Defaults to 100,000.
-        """
-        print(f"Running Training Benchmark On {number_iterations}")
-
-        # Convert to iterators
-        training_dataloader_iterator = iter(self.train_dataloader)
-
-        for _ in tqdm(range(number_iterations)):
-            try:
-                # Initialize trackers
-                training_trackers = self.get_metric_trackers()
-
-                training_batch_dictionary = next(training_dataloader_iterator)
-                _, _ = self.run_model_iteration(batch_input_dictionary=training_batch_dictionary,
-                                                writer=self.training_writer,
-                                                iteration=1,
-                                                tracker_dictionary=training_trackers)
-            except StopIteration:
-                training_dataloader_iterator = iter(self.train_dataloader)
-        print("Training Benchmark Completed.")
-        exit()
 
     def run_training_loop(self):
         """
-        Executes the main training loop for the specified number of iterations.
-
-        This method iterates over the training dataloader, performs forward and backward passes,
-        updates model parameters, periodically saves the model, and optionally runs validation steps.
+        Executes the main training loop for the U-Net model.
         """
-        # Convert to iterators
         training_dataloader_iterator = iter(self.train_dataloader)
         validation_dataloader_iterator = iter(self.validation_dataloader)
 
-        # Initialize trackers
-        # Tracker dictionary example:
-        # tracker = {"start_time": 123456789.0, "total_loss": 0.0, "fape_loss": 0.0,
-        #           "auxillary_loss": 0.0, "lddt_loss": 0.0, "distogram_loss": 0.0}
         training_trackers = self.get_metric_trackers()
-        if self.compute_validation_iteration:
-            validation_trackers = self.get_metric_trackers()
-        else:
-            validation_trackers = None
+        validation_trackers = self.get_metric_trackers() if self.compute_validation_iteration else None
 
         training_iteration = self.start_iteration
 
-        # Periodic checkpointing for safety (backup)
-        # We save the model every 1/4 of the weight_saving_iterations to prevent significant
-        # data loss in case of an unexpected shutdown.
-        backup_interval = max(1, self.weight_saving_iterations // 4)
-
         try:
             for training_iteration in range(self.start_iteration, self.training_iterations + self.start_iteration, 1):
-
-                # Periodic checkpointing for safety (backup)
-                if training_iteration % backup_interval == 0:
+                if training_iteration % self.weight_saving_iterations == 0:
                     self.save_model(iteration=training_iteration)
-
-                    # Only run the full test evaluation at the main weight_saving_iterations interval
-                    if training_iteration % self.weight_saving_iterations == 0:
-                        self.run_test_evaluation(iteration=training_iteration)
+                    self.run_test_evaluation(iteration=training_iteration)
 
                 # Get next training elements
-                # Ensure that in case of stopIteration, just relaunch iterator
                 try:
-                    training_batch_dictionary = next(training_dataloader_iterator)
+                    training_images, training_masks = next(training_dataloader_iterator)
                 except StopIteration:
                     training_dataloader_iterator = iter(self.train_dataloader)
-                    training_batch_dictionary = next(training_dataloader_iterator)
-                except FileNotFoundError as e:
+                    training_images, training_masks = next(training_dataloader_iterator)
+                except FileNotFoundError:
                     continue
 
-                # Set the module in training mode.
-                # Reset the gradients of all optimized classes :`torch.Tensor` s.
                 self.model.train()
                 self.optimizer.zero_grad()
 
-                # Forward pass containing batch dictionary and tensorboard logger
-                training_loss, training_model_outputs = self.run_model_iteration(
-                    batch_input_dictionary=training_batch_dictionary,
+                # Forward pass
+                training_loss, _ = self.run_model_iteration(
+                    batch_images=training_images,
+                    batch_masks=training_masks,
                     writer=self.training_writer,
                     iteration=training_iteration,
                     tracker_dictionary=training_trackers)
@@ -410,22 +185,21 @@ class Trainer:
                 training_loss.backward()
                 self.optimizer.step()
 
-                # Validation phase : No gradient computation
+                # Validation phase
                 if self.compute_validation_iteration:
                     self.model.eval()
                     with torch.no_grad():
-                        # Get data
-                        # Ensure that in case of stopIteration, just relaunch iterator
                         try:
-                            validation_batch_dictionary = next(validation_dataloader_iterator)
+                            validation_images, validation_masks = next(validation_dataloader_iterator)
                         except StopIteration:
                             validation_dataloader_iterator = iter(self.validation_dataloader)
-                            validation_batch_dictionary = next(validation_dataloader_iterator)
-                        except FileNotFoundError as e:
+                            validation_images, validation_masks = next(validation_dataloader_iterator)
+                        except FileNotFoundError:
                             continue
-                        # Forward pass containing batch dictionary and tensorboard logger
+                            
                         _, _ = self.run_model_iteration(
-                            batch_input_dictionary=validation_batch_dictionary,
+                            batch_images=validation_images,
+                            batch_masks=validation_masks,
                             writer=self.validation_writer,
                             iteration=training_iteration,
                             tracker_dictionary=validation_trackers)
@@ -437,32 +211,17 @@ class Trainer:
                         training_tracker_dictionary=training_trackers,
                         validation_tracker_dictionary=validation_trackers)
 
-                    # Function that will be used to debug convergence
-                    mean_angle_delta, mean_distance_delta = self.console_log_prediction_comparisons(
-                        training_iteration=training_iteration,
-                        training_model_outputs=training_model_outputs,
-                        training_batch_dictionary=training_batch_dictionary)
-
-                    self.latest_mean_distance_delta = mean_distance_delta
-
                     if self.compute_validation_iteration:
                         validation_trackers = self.get_metric_trackers()
 
         except KeyboardInterrupt:
             print_red(f"\nTraining Interrupted by User at iteration {training_iteration}.", add_separators=True)
-
-        except FileNotFoundError:
-            print_red(f"\nFile Not Found at iteration {training_iteration}.", add_separators=True)
-
         finally:
             self.save_model(iteration=training_iteration)
-            print_green(f"Model successfully saved at iteration {training_iteration}. Exiting Training.",
-                        add_separators=True)
-            # Close all the summary writers
+            print_green(f"Model successfully saved at iteration {training_iteration}. Exiting Training.", add_separators=True)
             self.training_writer.close()
             if self.compute_validation_iteration:
                 self.validation_writer.close()
-
     def run_test_evaluation(self, iteration: int):
         """
         Performs a full evaluation on the test dataset and logs results to a file.
@@ -596,82 +355,41 @@ class Trainer:
 
         print_green(f"Successfully saved {samples_processed} sample predictions to {output_directory}")
 
-    def run_model_iteration(self, batch_input_dictionary: Dict[str, torch.Tensor],
+    def run_model_iteration(self, batch_images: torch.Tensor, batch_masks: torch.Tensor,
                             writer: SummaryWriter, iteration: int,
-                            tracker_dictionary: Dict[str, Any] | None) -> tuple[torch.Tensor, Dict[str, torch.Tensor]]:
+                            tracker_dictionary: dict | None) -> tuple[torch.Tensor, torch.Tensor]:
         """
-        Executes a single forward pass of the AlphaFold II network, computes all structural losses,
+        Executes a single forward pass of the U-Net, computes the BCE loss,
         and updates performance trackers.
 
-        This function bridges the batched training data and the core model architecture. It passes
-        the features through `AlphafoldII`, extracts the final predictions, computes the constituent
-        losses (FAPE, auxiliary torsion, distogram, pLDDT), logs them to TensorBoard, and updates
-        the console tracking dictionary.
-
         Args:
-            batch_input_dictionary (Dict[str, torch.Tensor]): A dictionary of input features.
-                Key shapes:
-                - input_msa_feature: (batch_size, number_clusters, number_residues, msa_feature_dimension, number_cycles)
-                - input_extra_msa_feature: (batch_size, number_extra_sequences, number_residues, input_extra_msa_feature_dimension, number_cycles)
-                - input_sequence_feature: (batch_size, number_residues, input_sequence_feature_dimension)
-                - input_residue_index_feature: (batch_size, number_residues)
-                - ground_truth_frames: (batch_size, number_residues, 8, 4, 4)
-                - ground_truth_angles: (batch_size, number_residues, 7, 2)
-                - alternative_ground_truth_angles: (batch_size, number_residues, 7, 2)
-                - ground_truth_global_positions: (batch_size, number_residues, 37, 3)
-                - alternative_ground_truth_global_positions: (batch_size, number_residues, 37, 3)
-                - sequence_labels: (batch_size, number_residues)
+            batch_images (torch.Tensor): The input image tensor of shape (B, C, H, W).
+            batch_masks (torch.Tensor): The ground truth mask tensor of shape (B, 1, H, W).
             writer (SummaryWriter): TensorBoard writer for logging.
             iteration (int): The current training iteration step.
-            tracker_dictionary (Dict[str, Any] | None): Dictionary tracking rolling average metrics for console logging.
+            tracker_dictionary (Dict[str, Any] | None): Dictionary tracking rolling average metrics.
 
         Returns:
-            tuple[torch.Tensor, Dict[str, torch.Tensor]]: A tuple containing:
-                - total_loss (torch.Tensor): The aggregated loss to be backward-propagated. Shape: `()`.
-                - model_outputs (Dict[str, torch.Tensor]): The raw predicted tensors (e.g., angles, coordinates).
+            tuple[torch.Tensor, torch.Tensor]: A tuple containing the total_loss and the model predictions.
         """
-        # Set input to the right device
-        batch_input_dictionary = self.set_input_dictionary_device(input_dictionary=batch_input_dictionary)
-        batch_input_dictionary = self.set_input_dictionary_dtype(input_dictionary=batch_input_dictionary)
+        # Move to target device/dtype
+        batch_images = batch_images.to(device=self.device, dtype=self.dtype)
+        batch_masks = batch_masks.to(device=self.device, dtype=self.dtype)
 
-        # Run the model
-        model_outputs = self.model(batch_input_dictionary=batch_input_dictionary)
+        # Forward pass
+        model_outputs = self.model(batch_images)
 
-        # Loss Calculation (Mean over cycles)
-        fape_loss = model_outputs['overall_fape_loss'].mean()
-        auxillary_loss = model_outputs['auxillary_loss'].mean()
-        lddt_loss = model_outputs['predicted_lddt_loss'].mean()
+        # Loss Calculation
+        total_loss = self.criterion(model_outputs, batch_masks)
 
-        # Get Distogram Loss
-        distogram_loss = model_outputs["distogram_loss"]
-
-        # todo to be reviewed
-        # Get Peptide Linker Loss
-        peptide_linker_loss = model_outputs.get("peptide_linker_loss", torch.tensor(0.0, device=self.device, dtype=self.dtype))
-
-        # Get full training loss
-        total_loss = fape_loss + auxillary_loss + lddt_loss + distogram_loss + peptide_linker_loss
-
-        # Get the true lDDT metric (mean over residues and cycles)
-        lddt_metric = model_outputs["true_lddt"].mean()
-
-        # Get the physical FAPE metric (mean over cycles)
-        unclamped_fape = model_outputs["unclamped_fape"].mean()
-
-        # Store losses and other metrics in a dictionary
         metric_dictionary = {
             "total_loss": total_loss,
-            "fape_loss": fape_loss,
-            "auxillary_loss": auxillary_loss,
-            "lddt_loss": lddt_loss,
-            "distogram_loss": distogram_loss,
-            "peptide_linker_loss": peptide_linker_loss,
-            "lddt_metric": lddt_metric,
-            "unclamped_fape": unclamped_fape}
+        }
 
         # Update tracker dictionary (rolling average accumulation)
-        for metric_key, metric_value in metric_dictionary.items():
-            tracker_dictionary[metric_key] += metric_value.item() / self.information_dump
+        if tracker_dictionary is not None:
+            for metric_key, metric_value in metric_dictionary.items():
+                tracker_dictionary[metric_key] += metric_value.item() / self.information_dump
 
         # Log data to tensorboard (per-iteration)
         self.log_metrics_to_tensorboard(writer=writer,

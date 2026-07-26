@@ -7,6 +7,9 @@ ExperimentConfiguration:
   learning_rate: 2.0e-4
   loss: "focal_loss"
   dtype: "float64"
+  batch_size: 8
+  compute_validation_iteration: True
+  resume_training: True
 
 UnetConfiguration:
   input_channels: 1
