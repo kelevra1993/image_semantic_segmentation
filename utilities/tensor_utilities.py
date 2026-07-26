@@ -15,7 +15,8 @@ def get_device() -> torch.device:
     accelerators are detected. It is used globally across all modules to maintain
     device consistency.
 
-    :return: The detected torch.device (e.g., 'cuda', 'mps', or 'cpu').
+    Returns:
+        torch.device: The detected torch.device (e.g., 'cuda', 'mps', or 'cpu').
     """
     if torch.cuda.is_available():
         return torch.device("cuda")
@@ -34,8 +35,9 @@ def print_tensor_shape(tensor: torch.Tensor, name: Optional[str] = ""):
     to verify that tensor dimensions align with expected shapes (e.g., MSA or Pair representations)
     after complex transformations or contractions.
 
-    :param tensor: The torch.Tensor whose shape will be printed. Shape: (*).
-    :param name: An optional label to identify the tensor in the output.
+    Args:
+        tensor (torch.Tensor): The torch.Tensor whose shape will be printed. Shape: (*).
+        name (Optional[str], optional): An optional label to identify the tensor in the output.
     """
     print_blue(f"Tensor {name} Is Of Shape : {list(tensor.shape)}")
 
@@ -48,8 +50,9 @@ def print_tensor_type(tensor: torch.Tensor, name: Optional[str] = ""):
     architectural modules, preventing type mismatch errors during multi-platform
     execution (CPU/CUDA/MPS).
 
-    :param tensor: The torch.Tensor whose dtype will be printed. Shape: (*).
-    :param name: An optional label to identify the tensor in the output.
+    Args:
+        tensor (torch.Tensor): The torch.Tensor whose dtype will be printed. Shape: (*).
+        name (Optional[str], optional): An optional label to identify the tensor in the output.
     """
     print_yellow(f"Tensor {name} Is Of Type : {tensor.dtype}")
 
@@ -62,8 +65,9 @@ def print_tensor_device(tensor: torch.Tensor, name: Optional[str] = ""):
     participating in an operation reside on the same hardware (CUDA, MPS, or CPU) as
     mandated by the project's cross-platform compatibility guidelines.
 
-    :param tensor: The torch.Tensor whose device will be printed. Shape: (*).
-    :param name: An optional label to identify the tensor in the output.
+    Args:
+        tensor (torch.Tensor): The torch.Tensor whose device will be printed. Shape: (*).
+        name (Optional[str], optional): An optional label to identify the tensor in the output.
     """
     print_green(f"Tensor {name} Is On : {tensor.device}")
 
@@ -76,8 +80,9 @@ def print_tensor_status(tensor: torch.Tensor, name: Optional[str] = ""):
     state. This is particularly useful for deep debugging within dense modules like the
     Evoformer or Structure Module where multiple transformations occur.
 
-    :param tensor: The torch.Tensor to inspect. Shape: (*).
-    :param name: An optional label to identify the tensor in the output.
+    Args:
+        tensor (torch.Tensor): The torch.Tensor to inspect. Shape: (*).
+        name (Optional[str], optional): An optional label to identify the tensor in the output.
     """
     print_tensor_shape(tensor=tensor, name=name)
     print_tensor_type(tensor=tensor, name=name)
@@ -91,7 +96,8 @@ def print_tensor_list(tensor: torch.Tensor, round: int = 4):
     Useful for inspecting the numerical values of small tensors or intermediate results
     during the development and testing of architectural components.
 
-    :param tensor: The torch.Tensor to print.
-    :param round: Number of decimal places for rounding.
+    Args:
+        tensor (torch.Tensor): The torch.Tensor to print.
+        round (int, optional): Number of decimal places for rounding. Defaults to 4.
     """
     print(np.round(tensor.tolist(), round))
