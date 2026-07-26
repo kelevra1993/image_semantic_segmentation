@@ -1,5 +1,7 @@
 import os
 import cv2
+import json
+import random
 import kagglehub
 from tqdm import tqdm
 
@@ -129,6 +131,68 @@ class DatasetRetriever:
 
         print(f"Processed Dataset Was Saved Under file://{target_directory}")
 
+    def create_train_validation_test_split(self, train_ratio: float = 0.7, validation_ratio: float = 0.2, test_ratio: float = 0.1) -> None:
+        """
+        Creates training, validation, and testing splits from the preprocessed dataset and saves them as JSON files.
+
+        Each entry in the resulting JSON files is structured as a dictionary containing the image name
+        and a list of its corresponding masks.
+
+        Args:
+            train_ratio (float, optional): The proportion of the dataset to include in the training split. Defaults to 0.7.
+            validation_ratio (float, optional): The proportion of the dataset to include in the validation split. Defaults to 0.2.
+            test_ratio (float, optional): The proportion of the dataset to include in the testing split. Defaults to 0.1.
+            
+        Returns:
+            None
+        """
+        directory_name = f"preprocessed_{self.image_size}"
+        directory_name += "_KAR" if self.keep_aspect_ratio else ""
+        target_directory = os.path.join(self.dataset_directory, directory_name)
+
+        if not os.path.exists(target_directory):
+            print(f"Preprocessed directory {target_directory} does not exist.")
+            return
+
+        all_files = get_images(target_directory, basename=True)
+        
+        # Identify all images (those without '_mask' in their name)
+        images = [file_name for file_name in all_files if '_mask' not in file_name]
+        
+        dataset_entries = []
+        for image_name in images:
+            base_name = os.path.splitext(image_name)[0]
+            # Find all corresponding masks for the current image
+            masks = [file_name for file_name in all_files if file_name.startswith(base_name + '_mask')]
+            
+            dataset_entries.append({
+                "image_name": image_name,
+                "masks": masks
+            })
+                
+        # Shuffle dataset entries to ensure random distribution
+        random.seed(42)  # For reproducibility
+        random.shuffle(dataset_entries)
+        
+        total_length = len(dataset_entries)
+        training_end = int(total_length * train_ratio)
+        validation_end = training_end + int(total_length * validation_ratio)
+        
+        training_split = dataset_entries[:training_end]
+        validation_split = dataset_entries[training_end:validation_end]
+        testing_split = dataset_entries[validation_end:]
+        
+        # Helper to save JSON
+        def save_json(data, filename):
+            filepath = os.path.join(target_directory, filename)
+            with open(filepath, 'w') as output_file:
+                json.dump(data, output_file, indent=4)
+            print(f"Saved {len(data)} items to {filepath}")
+            
+        save_json(training_split, "train_dataset.json")
+        save_json(validation_split, "validation_dataset.json")
+        save_json(testing_split, "test_dataset.json")
+
 
 parent_directory = os.path.dirname(os.getcwd())
 dataset_directory = os.path.join(parent_directory, "ultrasound_dataset")
@@ -140,3 +204,4 @@ dataset_retriever = DatasetRetriever(dataset_directory=dataset_directory,
 dataset_retriever.download_dataset()
 dataset_retriever.clean_dataset()
 dataset_retriever.preprocess_dataset()
+dataset_retriever.create_train_validation_test_split()
