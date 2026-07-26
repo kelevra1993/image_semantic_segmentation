@@ -17,6 +17,8 @@ from utilities.os_utilities import load_configuration, print_red, print_green, p
 from utilities.tensor_utilities import get_device, print_tensor_status, print_tensor_list
 from ultrasound_segmentation.model.model import UnetModel
 from utilities.data_utilities.dataloader import get_dataloaders
+from torch.utils.data.dataloader import _BaseDataLoaderIter
+
 from torch.utils.data import DataLoader
 
 
@@ -135,6 +137,44 @@ class Trainer:
 
         return train_dataloader, validation_dataloader, test_dataloader
 
+    @staticmethod
+    def get_next_batch(dataloader_iterator: _BaseDataLoaderIter, dataloader: DataLoader) -> Tuple[
+        torch.Tensor, torch.Tensor, _BaseDataLoaderIter]:
+        """
+        Retrieves the next batch of images and masks from the dataloader iterator.
+        
+        If the iterator is exhausted, it re-initializes it from the dataloader.
+        If a FileNotFoundError is encountered during data loading, it continues attempting
+        to fetch the next available batch, up to a maximum of 10 consecutive failures.
+        
+        Args:
+            dataloader_iterator (_BaseDataLoaderIter): The current iterator for the dataloader.
+            dataloader (DataLoader): The original dataloader object to reset the iterator.
+            
+        Returns:
+            Tuple[torch.Tensor, torch.Tensor, iter]: A tuple containing the batch of images, 
+                the batch of masks, and the potentially refreshed iterator.
+                
+        Raises:
+            SystemExit: If more than 10 consecutive FileNotFoundError occur.
+        """
+        missing_files_count = 0
+        while True:
+            try:
+                images, masks = next(dataloader_iterator)
+                break
+            except StopIteration:
+                dataloader_iterator = iter(dataloader)
+            except FileNotFoundError:
+                missing_files_count += 1
+                if missing_files_count > 10:
+                    print_red("Critical Error: Over 10 consecutive missing files encountered. Exiting.",
+                              add_separators=True)
+                    exit(1)
+                continue
+
+        return images, masks, dataloader_iterator
+
     def run_training_loop(self) -> None:
         """
         Executes the main training loop for the U-Net model.
@@ -158,13 +198,8 @@ class Trainer:
                     self.run_test_evaluation(iteration=training_iteration)
 
                 # Get next training elements
-                try:
-                    training_images, training_masks = next(training_dataloader_iterator)
-                except StopIteration:
-                    training_dataloader_iterator = iter(self.train_dataloader)
-                    training_images, training_masks = next(training_dataloader_iterator)
-                except FileNotFoundError:
-                    continue
+                training_images, training_masks, training_dataloader_iterator = self.get_next_batch(
+                    dataloader_iterator=training_dataloader_iterator, dataloader=self.train_dataloader)
 
                 self.model.train()
                 self.optimizer.zero_grad()
@@ -185,13 +220,8 @@ class Trainer:
                 if self.compute_validation_iteration:
                     self.model.eval()
                     with torch.no_grad():
-                        try:
-                            validation_images, validation_masks = next(validation_dataloader_iterator)
-                        except StopIteration:
-                            validation_dataloader_iterator = iter(self.validation_dataloader)
-                            validation_images, validation_masks = next(validation_dataloader_iterator)
-                        except FileNotFoundError:
-                            continue
+                        validation_images, validation_masks, validation_dataloader_iterator = self.get_next_batch(
+                            dataloader_iterator=validation_dataloader_iterator, dataloader=self.validation_dataloader)
 
                         _, _ = self.run_model_iteration(
                             batch_images=validation_images,
