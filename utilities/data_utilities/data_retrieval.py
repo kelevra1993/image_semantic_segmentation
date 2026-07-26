@@ -18,7 +18,7 @@ class DatasetRetriever:
         Initializes the DatasetRetriever with directories and preprocessing configuration.
 
         Args:
-            dataset_directory (str): Path to dataset directory.
+            dataset_directory (str): Path to the root dataset directory. The raw data will be stored in a 'raw' subdirectory.
             image_size (int): The target size for the images (both width and height) during preprocessing.
             keep_aspect_ratio (bool): Whether to maintain the original aspect ratio of images by padding them.
         """
@@ -31,9 +31,11 @@ class DatasetRetriever:
         """
         Downloads the breast ultrasound images dataset from Kaggle and renames the root folder.
 
-        This method will automatically create the parent directory if it does not exist, download
-        the dataset, clean up unnecessary folders, and place the data in the specified raw 
-        dataset directory.
+        This method will automatically create the parent directory if it does not exist. It uses a 
+        temporary directory for the download process. If the dataset has not been downloaded already 
+        (checked via a '.complete.txt' file), it downloads the dataset, cleans up unnecessary folders, 
+        and renames the extracted 'Dataset_BUSI_with_GT' directory to the specified raw dataset 
+        directory. Finally, it creates a '.complete.txt' file to prevent redundant downloads.
         """
 
         make_directory(self.dataset_directory)
@@ -53,7 +55,8 @@ class DatasetRetriever:
 
             if os.path.exists(complete_directory):
                 rmtree(complete_directory)
-
+                
+                # Rename to a clean, easily readable folder name
                 os.rename(src=os.path.join(temporary_dataset_directory, "Dataset_BUSI_with_GT"),
                           dst=self.raw_dataset_directory)
 
@@ -69,16 +72,18 @@ class DatasetRetriever:
         Cleans the dataset by removing unwanted classes and flattening the directory structure.
 
         This method removes the 'normal' class folder entirely, and then moves all files from the
-        'benign' and 'malignant' folders directly into the root dataset directory. The now-empty 
+        'benign' and 'malignant' folders directly into the raw dataset directory. The now-empty 
         'benign' and 'malignant' folders are subsequently deleted.
         """
         normal_directory = os.path.join(self.raw_dataset_directory, "normal")
         benign_directory = os.path.join(self.raw_dataset_directory, "benign")
         malignant_directory = os.path.join(self.raw_dataset_directory, "malignant")
 
+        # Remove images that do not have any segmentations
         if os.path.exists(normal_directory):
             rmtree(normal_directory)
 
+        # Move images to a single directory
         for data_directory in [benign_directory, malignant_directory]:
             if os.path.exists(data_directory):
                 for file_name in os.listdir(data_directory):
@@ -91,9 +96,11 @@ class DatasetRetriever:
         """
         Preprocesses the raw dataset images and masks, and saves them to a structured directory.
 
-        This method iterates through all images in the raw dataset directory, resizes them (with
-        or without padding to keep aspect ratio), and saves the resulting files into a designated 
-        preprocessing folder. PNG lossless compression is used to ensure mask integrity is preserved.
+        This method constructs a target directory name based on the image size and whether the aspect 
+        ratio is kept (e.g., 'preprocessed_512_KAR'). It iterates through all images in the raw dataset 
+        directory, resizes them (with or without padding to keep aspect ratio), and saves the resulting 
+        files into the designated preprocessing folder. PNG lossless compression is used to ensure mask 
+        integrity is preserved.
         """
         # Create preprocessed directory name
         directory_name = f"preprocessed_{self.image_size}"
@@ -114,6 +121,7 @@ class DatasetRetriever:
                                          keep_ratio=self.keep_aspect_ratio)
 
             output_path = os.path.join(target_directory, os.path.basename(file_path))
+
             # We use lossless compression since we want to keep our mask
             cv2.imwrite(filename=output_path,
                         img=processed_image,
