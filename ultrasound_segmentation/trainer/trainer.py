@@ -1,3 +1,5 @@
+import torchvision
+from ultrasound_segmentation.loss.bce_loss import BCELoss
 import os
 import csv
 import time
@@ -65,7 +67,7 @@ class Trainer:
         self.model.to(device=self.device, dtype=self.dtype)
 
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.learning_rate)
-        self.criterion = nn.BCEWithLogitsLoss()
+        self.criterion = BCELoss()
 
         # Restoration logic
         self.start_iteration = 1
@@ -231,127 +233,85 @@ class Trainer:
         """
         print(f"Starting Full Test Evaluation at Iteration {iteration}...")
         self.model.eval()
-        test_trackers = {metric_key: 0.0 for metric_key in self.tracked_metrics_mapping.keys()}
+        
+        total_test_loss = 0.0
         number_batches = len(self.test_dataloader)
 
         with torch.no_grad():
-            for batch_input_dictionary in tqdm(self.test_dataloader, total=number_batches,
-                                               desc=f"Test Evaluation Iteration {iteration}"):
-                # Set input to the right device
-                batch_input_dictionary = self.set_input_dictionary_device(input_dictionary=batch_input_dictionary)
-                batch_input_dictionary = self.set_input_dictionary_dtype(input_dictionary=batch_input_dictionary)
-                model_outputs = self.model(batch_input_dictionary=batch_input_dictionary)
+            for test_images, test_masks in tqdm(self.test_dataloader, total=number_batches,
+                                                desc=f"Test Evaluation Iteration {iteration}"):
+                
+                test_images = test_images.to(device=self.device, dtype=self.dtype)
+                test_masks = test_masks.to(device=self.device, dtype=self.dtype)
+                
+                model_outputs = self.model(test_images)
+                loss = self.criterion(predictions=model_outputs, ground_truth=test_masks)
+                
+                total_test_loss += loss.item()
 
-                # Calculate metrics (mean over cycles)
-                fape_loss = model_outputs['overall_fape_loss'].mean().item()
-                auxillary_loss = model_outputs['auxillary_loss'].mean().item()
-                lddt_loss = model_outputs['predicted_lddt_loss'].mean().item()
-                distogram_loss = model_outputs["distogram_loss"].item()
-                peptide_linker_loss = model_outputs.get("peptide_linker_loss", torch.tensor(0.0)).item()
-                total_loss = fape_loss + auxillary_loss + lddt_loss + distogram_loss + peptide_linker_loss
-                lddt_metric = model_outputs["true_lddt"].mean().item()
-                unclamped_fape = model_outputs["unclamped_fape"].mean().item()
-
-                # Accumulate
-                test_trackers["total_loss"] += total_loss
-                test_trackers["fape_loss"] += fape_loss
-                test_trackers["auxillary_loss"] += auxillary_loss
-                test_trackers["lddt_loss"] += lddt_loss
-                test_trackers["distogram_loss"] += distogram_loss
-                test_trackers["peptide_linker_loss"] += peptide_linker_loss
-                test_trackers["lddt_metric"] += lddt_metric
-                test_trackers["unclamped_fape"] += unclamped_fape
-
-        # Calculate means
-        for metric_key in test_trackers.keys():
-            test_trackers[metric_key] /= number_batches
+        # Calculate mean
+        mean_test_loss = total_test_loss / number_batches if number_batches > 0 else 0.0
 
         # Log to file
         evaluation_file = self.project_root / "test_evaluation_results.txt"
         with open(evaluation_file, "a") as f:
-            f.write("+" + "-" * 50 + "+\n")
+            f.write("+" + "-" * 50 + "\n")
             f.write(f"| Iteration: {iteration:<38} |\n")
-            f.write("+" + "-" * 50 + "+\n")
-            for metric_key, display_name in self.tracked_metrics_mapping.items():
-                f.write(f"| {display_name:<35} : {test_trackers[metric_key]:<8.4f} |\n")
-            f.write("+" + "-" * 50 + "+\n\n")
+            f.write("+" + "-" * 50 + "\n")
+            f.write(f"| {'Total BCE Loss':<35} : {mean_test_loss:<8.4f} |\n")
+            f.write("+" + "-" * 50 + "\n\n")
 
         print(f"Full Test Evaluation Completed. Results appended to {evaluation_file}")
 
         # Run sample predictions for visualization
-        self.run_sample_predictions(iteration=iteration, number_samples=50)
+        self.run_sample_predictions(iteration=iteration, number_samples=20)
 
-    def run_sample_predictions(self, iteration: int, number_samples: int = 50):
+    def run_sample_predictions(self, iteration: int, number_samples: int = 20):
         """
         Runs inference on a subset of the test dataset and saves the predicted
-        protein structures as ModelCIF files.
-
-        This method facilitates visual inspection of the model's predictions by
-        converting raw coordinate outputs into standard protein structure files (.cif).
-        The files are saved in a dedicated 'test_sample_predictions' subdirectory
-        within the current iteration's weight folder.
+        segmentation masks as PNG images for visual inspection.
 
         Args:
-            iteration (int): The current training iteration index, used for output organization.
-            number_samples (int): The maximum number of test proteins to process for visualization.
-                Defaults to 50.
+            iteration (int): The current training iteration index.
+            number_samples (int): The maximum number of test samples to process.
         """
         print(f"Running {number_samples} Sample Predictions for Iteration {iteration}...")
 
-        # Create output directory within the iteration's weight folder
         output_directory = self.weights_directory / f"Iteration_{iteration}" / "test_sample_predictions"
         output_directory.mkdir(exist_ok=True, parents=True)
 
         self.model.eval()
         samples_processed = 0
-
-        # We iterate directly through the dataset to easily access protein IDs
-        # and avoid complex collation for non-tensor metadata.
-        dataset = self.test_dataloader.dataset
+        test_dataloader_iterator = iter(self.test_dataloader)
 
         with torch.no_grad():
-            for i in range(min(number_samples, len(dataset))):
-                protein_id = dataset.protein_ids[i]
-                batch = dataset[i]
+            while samples_processed < number_samples:
+                try:
+                    test_images, test_masks = next(test_dataloader_iterator)
+                except StopIteration:
+                    break
 
-                # Add batch dimension and move to device/dtype
-                batch = {k: v.unsqueeze(0) for k, v in batch.items()}
-                batch = self.set_input_dictionary_device(batch)
-                batch = self.set_input_dictionary_dtype(batch)
+                test_images = test_images.to(device=self.device, dtype=self.dtype)
+                test_masks = test_masks.to(device=self.device, dtype=self.dtype)
 
-                # Run inference
-                model_outputs = self.model(batch_input_dictionary=batch)
+                model_outputs = self.model(test_images)
+                predicted_masks = (torch.sigmoid(model_outputs) > 0.5).to(self.dtype)
 
-                # Extract predicted positions and mask for the last cycle
-                # final_positions shape: (1, number_residues, 37, 3, number_cycles)
-                # position_mask shape: (1, number_residues, 37, number_cycles)
-                predicted_positions = model_outputs["final_positions"][0, ..., -1]
-                atom_mask = model_outputs["position_mask"][0, ..., -1]
-
-                # Extract ground truth positions
-                # shape: (1, number_residues, 37, 3)
-                ground_truth_positions = batch["ground_truth_global_positions"][0, ...]
-
-                # Extract sequence labels and convert back to single-letter amino acid list, replacing 'X' with 'UNK'
-                # sequence_labels shape: (1, number_residues)
-                sequence_indices = batch["sequence_labels"][0].cpu().numpy()
-                sequence = [index_to_x[int(idx)] if index_to_x[int(idx)] != 'X' else 'UNK' for idx in sequence_indices]
-
-                # Convert raw coordinates and mask to ModelCIF string format
-                # passing both prediction and ground truth to be saved as Chain A and Chain B
-                cif_string = to_modelcif(
-                    atom_positions=predicted_positions,
-                    atom_mask=atom_mask,
-                    sequence=sequence,
-                    description=f"AlphaFold II Prediction for {protein_id}",
-                    ground_truth_positions=ground_truth_positions)
-
-                # Save the structural model to disk (contains both chains)
-                output_path = output_directory / f"{protein_id}.cif"
-                with open(output_path, "w") as f:
-                    f.write(cif_string)
-
-                samples_processed += 1
+                batch_size_current = test_images.size(0)
+                for i in range(batch_size_current):
+                    if samples_processed >= number_samples:
+                        break
+                        
+                    comparison_grid = torch.cat([
+                        test_images[i:i+1], 
+                        test_masks[i:i+1], 
+                        predicted_masks[i:i+1]
+                    ], dim=0)
+                    
+                    output_path = output_directory / f"sample_{samples_processed:04d}.png"
+                    torchvision.utils.save_image(comparison_grid, output_path, nrow=3)
+                    
+                    samples_processed += 1
 
         print_green(f"Successfully saved {samples_processed} sample predictions to {output_directory}")
 
