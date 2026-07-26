@@ -8,7 +8,10 @@ from shapely.geometry import Polygon
 from utilities.os_utilities import read_json
 
 
-class AnnotationsConverter():
+class AnnotationsConverter:
+    """
+    A VGG Image Annotation converter in order to get masks for training a neural network.
+    """
     def __init__(self, image_path: str, annotation_path: str, label_dictionary: Dict,
                  method: Literal["naive", "ambiguous"] = "naive") -> None:
         """

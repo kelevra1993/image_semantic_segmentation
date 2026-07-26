@@ -31,4 +31,4 @@ for interpretation in ["ambiguous", "naive"]:
 
     # Display Mask For Visualisation
     # For viewing purposes we scale the values of the mask by the multiplier
-    annotations.show_mask(window_name=f"{interpretation} Mask", multiplier=40)
+    annotations.show_mask(window_name=f"{interpretation} Mask", multiplier=70)
