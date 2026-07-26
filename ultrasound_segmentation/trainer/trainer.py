@@ -18,7 +18,7 @@ from utilities.tensor_utilities import get_device, print_tensor_status, print_te
 from ultrasound_segmentation.model.model import UnetModel
 from utilities.data_utilities.dataloader import get_dataloaders
 from torch.utils.data import DataLoader
-import torch.nn as nn
+
 
 class Trainer:
     """
@@ -49,13 +49,13 @@ class Trainer:
         self.weight_saving_iterations = self.experiment_configuration["weight_saving_iterations"]
         self.information_dump = self.experiment_configuration["information_dump"]
         self.learning_rate = self.experiment_configuration["learning_rate"]
-        
+
         self.batch_size = self.experiment_configuration["batch_size"]
         self.compute_validation_iteration = self.experiment_configuration["compute_validation_iteration"]
         self.resume_training = self.experiment_configuration["resume_training"]
 
         # Setup paths and tensorboard
-        self.tensorboard_directory, self.weights_directory, self.metric_evolution_csv_file = self.setup_training_paths()
+        self.tensorboard_directory, self.weights_directory = self.setup_training_paths()
         self.training_writer, self.validation_writer = self.setup_tensorboard_writers()
 
         # Setting up dataloaders
@@ -67,6 +67,9 @@ class Trainer:
         self.model.to(device=self.device, dtype=self.dtype)
 
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.learning_rate)
+
+        # TODO Will be modified
+        # we will compute all losses but we will only optimise some
         self.criterion = BCELoss()
 
         # Restoration logic
@@ -75,11 +78,9 @@ class Trainer:
             self.start_iteration = self.restore_last_model()
 
         # Metric tracking
-        self.tracked_metrics_mapping = {
-            "total_loss": "Total BCE Loss",
-        }
+        self.tracked_metrics_mapping = {"total_loss": "Total BCE Loss"}
 
-    def setup_training_paths(self) -> tuple[Path, Path, Path]:
+    def setup_training_paths(self) -> tuple[Path, Path]:
         """
         Sets up the directory structure and persistent files for training outputs.
 
@@ -92,7 +93,6 @@ class Trainer:
             tuple[Path, Path, Path]: A tuple containing:
                 - tensorboard_directory (Path): Path to the TensorBoard logs folder.
                 - weights_directory (Path): Path to the saved model weights folder.
-                - metric_evolution_csv_file (Path): Path to the metrics evolution CSV file.
         """
         tensorboard_directory = self.project_root / "Tensorboard"
         weights_directory = self.project_root / "Weights"
@@ -101,14 +101,7 @@ class Trainer:
         tensorboard_directory.mkdir(exist_ok=True, parents=True)
         weights_directory.mkdir(exist_ok=True, parents=True)
 
-        # CSV Logger for metrics evolution to check how angle prediction and distance predictions are going
-        metric_evolution_csv_file = self.project_root / "metrics_evolution.csv"
-        if not metric_evolution_csv_file.exists():
-            with open(metric_evolution_csv_file, mode='a', newline='') as f:
-                writer = csv.writer(f)
-                writer.writerow(["Iteration", "Mean_Angle_Delta", "Mean_Distance_Delta"])
-
-        return tensorboard_directory, weights_directory, metric_evolution_csv_file
+        return tensorboard_directory, weights_directory
 
     def setup_tensorboard_writers(self):
         """
@@ -135,14 +128,11 @@ class Trainer:
                 the training, validation, and testing splits, respectively.
         """
         print_blue("Initializing U-Net DataLoaders...", add_separators=True)
-        
+
         train_dataloader, validation_dataloader, test_dataloader = get_dataloaders(
-            preprocessed_directory=self.dataset_folder,
-            configuration=self.model_configuration,
-            batch_size=self.batch_size,
-            number_of_workers=4
-        )
-        
+            preprocessed_directory=self.dataset_folder, configuration=self.model_configuration,
+            batch_size=self.batch_size, number_of_workers=4)
+
         return train_dataloader, validation_dataloader, test_dataloader
 
     def run_training_loop(self):
@@ -198,7 +188,7 @@ class Trainer:
                             validation_images, validation_masks = next(validation_dataloader_iterator)
                         except FileNotFoundError:
                             continue
-                            
+
                         _, _ = self.run_model_iteration(
                             batch_images=validation_images,
                             batch_masks=validation_masks,
@@ -220,10 +210,12 @@ class Trainer:
             print_red(f"\nTraining Interrupted by User at iteration {training_iteration}.", add_separators=True)
         finally:
             self.save_model(iteration=training_iteration)
-            print_green(f"Model successfully saved at iteration {training_iteration}. Exiting Training.", add_separators=True)
+            print_green(f"Model successfully saved at iteration {training_iteration}. Exiting Training.",
+                        add_separators=True)
             self.training_writer.close()
             if self.compute_validation_iteration:
                 self.validation_writer.close()
+
     def run_test_evaluation(self, iteration: int):
         """
         Performs a full evaluation on the test dataset and logs results to a file.
@@ -233,20 +225,19 @@ class Trainer:
         """
         print(f"Starting Full Test Evaluation at Iteration {iteration}...")
         self.model.eval()
-        
+
         total_test_loss = 0.0
         number_batches = len(self.test_dataloader)
 
         with torch.no_grad():
             for test_images, test_masks in tqdm(self.test_dataloader, total=number_batches,
                                                 desc=f"Test Evaluation Iteration {iteration}"):
-                
                 test_images = test_images.to(device=self.device, dtype=self.dtype)
                 test_masks = test_masks.to(device=self.device, dtype=self.dtype)
-                
+
                 model_outputs = self.model(test_images)
                 loss = self.criterion(predictions=model_outputs, ground_truth=test_masks)
-                
+
                 total_test_loss += loss.item()
 
         # Calculate mean
@@ -299,18 +290,16 @@ class Trainer:
 
                 batch_size_current = test_images.size(0)
                 for i in range(batch_size_current):
+
                     if samples_processed >= number_samples:
                         break
-                        
+
                     comparison_grid = torch.cat([
-                        test_images[i:i+1], 
-                        test_masks[i:i+1], 
-                        predicted_masks[i:i+1]
-                    ], dim=0)
-                    
+                        test_images[i:i + 1],test_masks[i:i + 1], predicted_masks[i:i + 1]], dim=0)
+
                     output_path = output_directory / f"sample_{samples_processed:04d}.png"
                     torchvision.utils.save_image(comparison_grid, output_path, nrow=3)
-                    
+
                     samples_processed += 1
 
         print_green(f"Successfully saved {samples_processed} sample predictions to {output_directory}")
@@ -342,9 +331,7 @@ class Trainer:
         # Loss Calculation
         total_loss = self.criterion(model_outputs, batch_masks)
 
-        metric_dictionary = {
-            "total_loss": total_loss,
-        }
+        metric_dictionary = {"total_loss": total_loss}
 
         # Update tracker dictionary (rolling average accumulation)
         if tracker_dictionary is not None:
@@ -374,8 +361,7 @@ class Trainer:
         torch.save({
             'iteration': iteration,
             'model_state': self.model.state_dict(),
-            'optimizer_state': self.optimizer.state_dict()
-        }, checkpoint_path)
+            'optimizer_state': self.optimizer.state_dict()}, checkpoint_path)
 
         print("Checkpoint Successfully Saved.")
 
@@ -394,9 +380,6 @@ class Trainer:
         """
         for metric_key, display_name in self.tracked_metrics_mapping.items():
             writer.add_scalar(display_name, metric_dictionary[metric_key].item(), iteration)
-
-
-
 
     def extract_last_model_iteration(self) -> int:
         """
