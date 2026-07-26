@@ -144,18 +144,16 @@ class AnnotationsConverter():
 
         return mask
 
-    def show_mask(self, delta: int = 1, multiplier: int = 30, window_name="Image Mask"):
+    def show_mask(self, multiplier: int = 30, window_name="Image Mask"):
         """
         Displays the generated neural network mask in a local GUI window for visual inspection.
 
         Args:
-            delta (int, optional): A constant value added to the mask pixel values before scaling, 
-                useful for making background or zero-valued pixels visible. Defaults to 1.
             multiplier (int, optional): A scaling factor applied to the mask pixel values to enhance 
                 visibility on screen. Defaults to 30.
             window_name (str, optional): The title of the OpenCV window. Defaults to "Image Mask".
         """
-        cv2.imshow(window_name, (self.neural_network_mask + delta) * multiplier)
+        cv2.imshow(window_name, self.neural_network_mask * multiplier)
         cv2.waitKey(0)
 
     def save_mask(self, output_file_path: str, add_interpretable_version: bool = False, multiplier=30):

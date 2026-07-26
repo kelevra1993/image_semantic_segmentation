@@ -11,7 +11,7 @@ bacteria_path = os.path.join(dataset_directory, "bacteria.png")
 annotation_path = os.path.join(dataset_directory, "annotations.json")
 
 # Setup Desired Label Dictionary {class_name: class_index_in_mask}
-label_dictionary = {"unsure": 0, "membrane": 1, "bacteria": 2}
+label_dictionary = {"background": 0, "membrane": 1, "bacteria": 2, "unsure": 3}
 
 # Based on some ambiguity in the annotation interpretation, i chose to implement two interpretations.
 # Naive interpretation -> Set up regions in the order they were labeled
