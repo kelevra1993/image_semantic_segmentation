@@ -1,4 +1,5 @@
 import json
+import os.path
 from typing import Dict, Any
 
 
@@ -21,3 +22,7 @@ def read_json(json_path: str) -> Dict[str, Any]:
         data = json.load(f)
 
     return data
+
+def make_directory(directory_path:str):
+
+    os.makedirs(directory_path,exist_ok=True)
