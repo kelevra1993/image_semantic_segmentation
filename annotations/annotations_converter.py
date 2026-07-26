@@ -146,7 +146,7 @@ class AnnotationsConverter:
 
         return mask
 
-    def show_mask(self, multiplier: int = 30, window_name="Image Mask"):
+    def show_mask(self, multiplier: int = 30, window_name: str = "Image Mask") -> None:
         """
         Displays the generated neural network mask in a local GUI window for visual inspection.
 
@@ -158,7 +158,7 @@ class AnnotationsConverter:
         cv2.imshow(window_name, self.neural_network_mask * multiplier)
         cv2.waitKey(0)
 
-    def save_mask(self, output_file_path: str, add_interpretable_version: bool = False, multiplier=30):
+    def save_mask(self, output_file_path: str, add_interpretable_version: bool = False, multiplier: int = 30) -> None:
         """
         Saves the generated neural network mask to disk in PNG format for downstream model training and interpretation.
 

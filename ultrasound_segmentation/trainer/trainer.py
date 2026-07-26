@@ -139,12 +139,16 @@ class Trainer:
         """
         Executes the main training loop for the U-Net model.
         """
+        # Get dataloader
         training_dataloader_iterator = iter(self.train_dataloader)
         validation_dataloader_iterator = iter(self.validation_dataloader)
 
+        # Get Metric Trackers
+        # Currently just BCE Loss
         training_trackers = self.get_metric_trackers()
         validation_trackers = self.get_metric_trackers() if self.compute_validation_iteration else None
 
+        # Get current training iteration
         training_iteration = self.start_iteration
 
         try:
@@ -295,7 +299,7 @@ class Trainer:
                         break
 
                     comparison_grid = torch.cat([
-                        test_images[i:i + 1],test_masks[i:i + 1], predicted_masks[i:i + 1]], dim=0)
+                        test_images[i:i + 1], test_masks[i:i + 1], predicted_masks[i:i + 1]], dim=0)
 
                     output_path = output_directory / f"sample_{samples_processed:04d}.png"
                     torchvision.utils.save_image(comparison_grid, output_path, nrow=3)

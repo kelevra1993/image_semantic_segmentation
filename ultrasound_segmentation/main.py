@@ -3,7 +3,14 @@ from ultrasound_segmentation.trainer.trainer import Trainer
 from utilities.os_utilities import load_experiment_configuration, print_yellow
 
 
-def main():
+def main() -> None:
+    """
+    Entry point for the ultrasound segmentation training process.
+
+    This function loads the experiment and model configurations from a YAML file,
+    initializes the Trainer class with these configurations, and starts the
+    main training loop.
+    """
     # Define configuration path
     experiment_configuration_path = Path(__file__).parent / "configurations" / f"configuration.yaml"
 
