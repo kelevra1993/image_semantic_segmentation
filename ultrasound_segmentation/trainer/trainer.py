@@ -103,7 +103,7 @@ class Trainer:
 
         return tensorboard_directory, weights_directory
 
-    def setup_tensorboard_writers(self):
+    def setup_tensorboard_writers(self) -> None:
         """
         Initializes TensorBoard SummaryWriters for logging training and validation metrics.
 
@@ -135,7 +135,7 @@ class Trainer:
 
         return train_dataloader, validation_dataloader, test_dataloader
 
-    def run_training_loop(self):
+    def run_training_loop(self) -> None:
         """
         Executes the main training loop for the U-Net model.
         """
@@ -220,7 +220,7 @@ class Trainer:
             if self.compute_validation_iteration:
                 self.validation_writer.close()
 
-    def run_test_evaluation(self, iteration: int):
+    def run_test_evaluation(self, iteration: int) -> None:
         """
         Performs a full evaluation on the test dataset and logs results to a file.
 
@@ -261,7 +261,7 @@ class Trainer:
         # Run sample predictions for visualization
         self.run_sample_predictions(iteration=iteration, number_samples=20)
 
-    def run_sample_predictions(self, iteration: int, number_samples: int = 20):
+    def run_sample_predictions(self, iteration: int, number_samples: int = 20) -> None:
         """
         Runs inference on a subset of the test dataset and saves the predicted
         segmentation masks as PNG images for visual inspection.
@@ -349,7 +349,7 @@ class Trainer:
 
         return total_loss, model_outputs
 
-    def save_model(self, iteration: int):
+    def save_model(self, iteration: int) -> None:
         """
         Persists the current model weights and optimizer state to disk.
 
@@ -445,7 +445,7 @@ class Trainer:
             # Resume from the next iteration
             return index_iteration + 1
 
-    def load_model(self, iteration: int):
+    def load_model(self, iteration: int) -> None:
         """
         Loads the model weights and optimizer state from a specified iteration checkpoint.
 
@@ -463,7 +463,7 @@ class Trainer:
         self.model.load_state_dict(checkpoint["model_state"])
         self.optimizer.load_state_dict(checkpoint["optimizer_state"])
 
-    def dump_in_checkpoint(self, iteration: int):
+    def dump_in_checkpoint(self, iteration: int) -> None:
         """
         Updates the checkpoint registry file to track the most recently saved model.
 

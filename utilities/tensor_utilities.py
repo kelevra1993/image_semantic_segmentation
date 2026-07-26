@@ -27,7 +27,7 @@ def get_device() -> torch.device:
     return torch.device("cpu")
 
 
-def print_tensor_shape(tensor: torch.Tensor, name: Optional[str] = ""):
+def print_tensor_shape(tensor: torch.Tensor, name: Optional[str] = "") -> None:
     """
     Logs the shape of a tensor to the console in a formatted blue string.
 
@@ -42,7 +42,7 @@ def print_tensor_shape(tensor: torch.Tensor, name: Optional[str] = ""):
     print_blue(f"Tensor {name} Is Of Shape : {list(tensor.shape)}")
 
 
-def print_tensor_type(tensor: torch.Tensor, name: Optional[str] = ""):
+def print_tensor_type(tensor: torch.Tensor, name: Optional[str] = "") -> None:
     """
     Logs the data type of a tensor to the console in a formatted yellow string.
 
@@ -57,7 +57,7 @@ def print_tensor_type(tensor: torch.Tensor, name: Optional[str] = ""):
     print_yellow(f"Tensor {name} Is Of Type : {tensor.dtype}")
 
 
-def print_tensor_device(tensor: torch.Tensor, name: Optional[str] = ""):
+def print_tensor_device(tensor: torch.Tensor, name: Optional[str] = "") -> None:
     """
     Logs the hardware device of a tensor to the console in a formatted green string.
 
@@ -72,7 +72,7 @@ def print_tensor_device(tensor: torch.Tensor, name: Optional[str] = ""):
     print_green(f"Tensor {name} Is On : {tensor.device}")
 
 
-def print_tensor_status(tensor: torch.Tensor, name: Optional[str] = ""):
+def print_tensor_status(tensor: torch.Tensor, name: Optional[str] = "") -> None:
     """
     Provides a comprehensive log of a tensor's shape, type, and device.
 
@@ -89,7 +89,7 @@ def print_tensor_status(tensor: torch.Tensor, name: Optional[str] = ""):
     print_tensor_device(tensor=tensor, name=name)
 
 
-def print_tensor_list(tensor: torch.Tensor, round: int = 4):
+def print_tensor_list(tensor: torch.Tensor, round: int = 4) -> None:
     """
     Converts a tensor to a list and prints it with specified rounding precision.
 
