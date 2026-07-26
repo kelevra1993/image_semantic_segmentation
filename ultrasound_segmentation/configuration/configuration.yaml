@@ -8,6 +8,8 @@ ExperimentConfiguration:
   loss: "focal_loss"
 
 UnetConfiguration:
+  input_channels: 1
+  output_channels: 1
   convolution_blocks:
     {
      "1": [1, 32],
