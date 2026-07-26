@@ -11,7 +11,16 @@ from utilities.os_utilities import read_json
 class AnnotationsConverter():
     def __init__(self, image_path: str, annotation_path: str, label_dictionary: Dict,
                  method: Literal["naive", "ambiguous"] = "naive") -> None:
+        """
+        Initializes the converter by loading the image and annotations, and immediately generating the mask.
 
+        Args:
+            image_path (str): Path to the source image file.
+            annotation_path (str): Path to the VGG Image Annotator JSON file.
+            label_dictionary (Dict): A mapping of string labels to integer pixel values for the mask.
+            method (Literal["naive", "ambiguous"], optional): The strategy for resolving overlapping 
+                polygons. Defaults to "naive".
+        """
         self.image_path = image_path
         self.image = cv2.imread(self.image_path)
 
@@ -22,19 +31,26 @@ class AnnotationsConverter():
         self.label_dictionary = label_dictionary
         self.neural_network_mask = self.get_mask(method=method)
 
-    def convert_image_annotations(self):
+    def convert_image_annotations(self) -> List[Dict]:
+        """
+        Extracts and converts the raw VGG Image Annotator (VIA) regions into a standardized format.
+
+        This method acts as the initial parsing step for the JSON annotations. It searches the raw
+        JSON data for entries matching the specified image file name, extracts the polygon coordinate 
+        points, and associates them with their corresponding class labels (e.g., 'membrane', 'bacteria'). 
+        The resulting structured data is then used downstream for creating the segmentation masks.
+
+        Returns:
+            List[Dict]: A list of dictionaries, where each dictionary represents a labeled region 
+                containing a 'label' string and a 'points' list of (x, y) coordinate tuples.
+        """
         annotation_regions = None
 
-        # TODO : Check with Spore.bio -> I assume that the first key is the project name
-        #  , multiple different labellers or multiple different resolutions of an image given the key name but no sure.
-        #  we will iterate through it and check that we have the same file name before adding labelled regions
         for key, labelling_information in self.annotation_data.items():
             if labelling_information["filename"] == os.path.basename(self.image_path):
                 # Grab the image annotations
                 annotation_regions = labelling_information["regions"]
 
-        # TODO Inform that we could not get the labels
-        # todo to be re-reviewed
         if not annotation_regions:
             print(f"Unfortunately we could not find any labelled regions for {self.image_path}")
             exit()
@@ -48,11 +64,19 @@ class AnnotationsConverter():
 
         return converted_image_annotations
 
-    def prioritize_largest_membrane(self):
-        # Trying to deal with ambiguity of the the annotation that was provided
-        # There is a membrane that spans approximately the whole image
-        # Inside of it there are bacteria regions that also have inner regions
-        # that are membranes followed by other bacteria regions
+    def prioritize_largest_membrane(self) -> List[Dict]:
+        """
+        Reorders the image annotations to ensure the largest membrane is processed first.
+
+        This method resolves ambiguity in the provided annotations where a large membrane spans 
+        approximately the whole image, and contains bacteria regions that themselves have inner 
+        membrane regions. By identifying and placing the largest membrane first in the list, it 
+        ensures that subsequent bacteria and inner regions are drawn correctly on top of it.
+
+        Returns:
+            List[Dict]: A reordered list of annotation dictionaries, with the largest membrane 
+                annotation at the beginning (if any membranes are present).
+        """
         membrane_areas = []
 
         found_membrane = False
@@ -79,9 +103,24 @@ class AnnotationsConverter():
         else:
             return self.image_annotations
 
-    def get_mask(self, method):
-        # todo definition of method for ambiguous
+    def get_mask(self, method: Literal["naive", "ambiguous"]) -> np.ndarray:
+        """
+        Generates a categorical 2D image mask from the parsed polygon annotations.
 
+        This function maps the region annotations to an array of pixel values, acting as the primary
+        data preparation step before feeding images into the segmentation neural network. Based on the 
+        selected `method`, it handles overlapping polygons differently. The 'ambiguous' method prioritizes
+        the largest membrane to be drawn first, so smaller enclosed structures (like bacteria) are drawn 
+        on top, preventing them from being overwritten.
+
+        Args:
+            method (Literal["naive", "ambiguous"]): The strategy used to handle overlapping annotations. 
+                'naive' draws them in the order they appear, whereas 'ambiguous' re-orders them to draw 
+                the largest membrane first.
+
+        Returns:
+            np.ndarray: A 2D numpy array of shape (height, width) representing the mask.
+        """
         # Set up the mask
         image_height, image_width, _ = self.image.shape
         mask = np.zeros((image_height, image_width), dtype=np.uint8)
@@ -105,16 +144,18 @@ class AnnotationsConverter():
 
         return mask
 
-    def show_mask(self, multiplier=30, window_name="Image Mask"):
+    def show_mask(self, delta: int = 1, multiplier: int = 30, window_name="Image Mask"):
         """
         Displays the generated neural network mask in a local GUI window for visual inspection.
 
         Args:
+            delta (int, optional): A constant value added to the mask pixel values before scaling, 
+                useful for making background or zero-valued pixels visible. Defaults to 1.
             multiplier (int, optional): A scaling factor applied to the mask pixel values to enhance 
                 visibility on screen. Defaults to 30.
             window_name (str, optional): The title of the OpenCV window. Defaults to "Image Mask".
         """
-        cv2.imshow(window_name, self.neural_network_mask * multiplier)
+        cv2.imshow(window_name, (self.neural_network_mask + delta) * multiplier)
         cv2.waitKey(0)
 
     def save_mask(self, output_file_path: str, add_interpretable_version: bool = False, multiplier=30):
