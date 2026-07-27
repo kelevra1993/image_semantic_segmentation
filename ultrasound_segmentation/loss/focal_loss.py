@@ -5,7 +5,6 @@ from typing import List
 import torch
 from torch import nn
 import cv2
-import plotly.express as px
 from utilities.tensor_utilities import print_tensor_status, print_tensor_list
 
 
@@ -78,22 +77,15 @@ class FocalLoss(nn.Module):
         focal_loss = torch.mean(batched_focal_loss)
 
         focal_loss_image = focal_loss_numerator/ focal_loss_denominator
-        for index in range(4):
+        for index in range(self.alpha.shape[1]):
             focal_loss_class_image = torch.nn.functional.normalize(focal_loss_image[0])
             index_model_predictions = torch.sigmoid(model_predictions[0, index])
-            # index_model_predictions = torch.where(index_model_predictions >0.5, 1.0, 0.0)
-            # probabilities_image = model_output_probabilities[0]
+
             probabilities_image = torch.nn.functional.normalize(torch.softmax(model_predictions, dim=-3)[0,index])
             cv2.imshow(f"Model - Prediction", index_model_predictions.detach().cpu().numpy())
-            cv2.imshow(f"Model - Probabilities", probabilities_image.detach().cpu().numpy())
-            cv2.imshow(f"Ground Truth - Index", ground_truths[0, index].detach().cpu().numpy())
+            cv2.imshow(f"Ground Truth", ground_truths[0, index].detach().cpu().numpy())
             cv2.imshow(f"Focal Loss", focal_loss_class_image.detach().cpu().numpy())
-            # cv2.imshow(f"Focal Loss Image", focal_loss_image[0].detach().cpu().numpy())
-
-            # fig = px.imshow(focal_loss_image[0].detach().cpu().numpy())
-            # fig.show()
             print_tensor_status(index_model_predictions,name="index_model_predictions")
             cv2.waitKey(0)
         exit()
 
-        exit()
