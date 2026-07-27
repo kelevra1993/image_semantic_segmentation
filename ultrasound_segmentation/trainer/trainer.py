@@ -328,11 +328,20 @@ class Trainer:
                     if samples_processed >= number_samples:
                         break
 
-                    comparison_grid = torch.cat([
-                        test_images[i:i + 1], test_masks[i:i + 1], predicted_masks[i:i + 1]], dim=0)
+                    img_to_add = test_images[i:i + 1] # (1, C, H, W)
+                    if img_to_add.shape[1] == 3:
+                        img_to_add = img_to_add.mean(dim=1, keepdim=True)
+
+                    components = [img_to_add]
+                    for c in range(test_masks.shape[1]):
+                        components.append(test_masks[i:i+1, c:c+1, :, :])
+                    for c in range(predicted_masks.shape[1]):
+                        components.append(predicted_masks[i:i+1, c:c+1, :, :])
+
+                    comparison_grid = torch.cat(components, dim=0)
 
                     output_path = output_directory / f"sample_{samples_processed:04d}.png"
-                    torchvision.utils.save_image(comparison_grid, output_path, nrow=3)
+                    torchvision.utils.save_image(comparison_grid, output_path, nrow=5)
 
                     samples_processed += 1
 

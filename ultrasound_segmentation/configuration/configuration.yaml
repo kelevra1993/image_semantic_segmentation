@@ -10,10 +10,15 @@ ExperimentConfiguration:
   batch_size: 8
   compute_validation_iteration: True
   resume_training: True
+  label_dictionary:
+    original: 0
+    object_square: 1
+    object_b: 2
+    object_plus: 3
 
 UnetConfiguration:
   input_channels: 1
-  output_channels: 1
+  output_channels: 4
   convolution_blocks:
     {
      "1": [1, 32],

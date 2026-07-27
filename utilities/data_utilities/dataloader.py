@@ -13,7 +13,7 @@ class UltrasoundDataset(Dataset):
     A PyTorch Dataset for loading Breast Ultrasound Images and their merged masks.
     """
 
-    def __init__(self, json_path: str | Path, data_directory: str | Path,
+    def __init__(self, json_path: str | Path, data_directory: str | Path, label_dictionary: Dict[str, int],
                  input_channels: int = 1, augment: bool = False) -> None:
         """
         Initializes the UltrasoundDataset.
@@ -32,6 +32,7 @@ class UltrasoundDataset(Dataset):
         self.data_entries = read_json(str(json_path))
         self.input_channels = input_channels
         self.augment = augment
+        self.label_dictionary = label_dictionary
 
     def __len__(self) -> int:
         """
@@ -67,22 +68,31 @@ class UltrasoundDataset(Dataset):
         if image_array is None:
             raise FileNotFoundError(f"Could not load image at {image_path}")
 
-        combined_mask = None
-        for mask_name in mask_names:
+        mask_list = [None] * len(self.label_dictionary)
+
+        combined_original = None
+        for mask_name in mask_names["original"]:
             mask_path = self.data_directory / mask_name
             mask_array = cv2.imread(str(mask_path), cv2.IMREAD_GRAYSCALE)
-            if combined_mask is None:
-                combined_mask = mask_array
+            if combined_original is None:
+                combined_original = mask_array
             else:
-                combined_mask = np.maximum(combined_mask, mask_array)
+                combined_original = np.maximum(combined_original, mask_array)
+        if combined_original is None:
+            combined_original = np.zeros(image_array.shape[:2], dtype=np.uint8)
 
-        if combined_mask is None:
-            combined_mask = np.zeros(image_array.shape[:2], dtype=np.uint8)
+        mask_list[self.label_dictionary["original"]] = combined_original
+
+        for key in ["object_square", "object_b", "object_plus"]:
+            mask_array = cv2.imread(str(self.data_directory / mask_names[key]), cv2.IMREAD_GRAYSCALE)
+            mask_list[self.label_dictionary[key]] = mask_array
+
+        combined_mask_array = np.stack(mask_list, axis=2)
 
         # Apply left-right flip augmentation if enabled
         if self.augment and random.random() > 0.5:
             image_array = cv2.flip(image_array, 1)
-            combined_mask = cv2.flip(combined_mask, 1)
+            combined_mask_array = cv2.flip(combined_mask_array, 1)
 
         if self.input_channels == 1:
             image_tensor = torch.from_numpy(image_array).float().unsqueeze(0) / 255.0
@@ -90,7 +100,8 @@ class UltrasoundDataset(Dataset):
             # Transpose from (Height, Width, Channels) to (Channels, Height, Width)
             image_tensor = torch.from_numpy(image_array).float().permute(2, 0, 1) / 255.0
 
-        mask_tensor = torch.from_numpy(combined_mask).float().unsqueeze(0) / 255.0
+        # mask_tensor shape: (4, H, W)
+        mask_tensor = torch.from_numpy(combined_mask_array).float().permute(2, 0, 1) / 255.0
 
         return image_tensor, mask_tensor
 
@@ -115,21 +126,26 @@ def get_dataloaders(preprocessed_directory: str | Path, configuration: Dict[str,
     unet_configuration = configuration["UnetConfiguration"]
     input_channels = unet_configuration["input_channels"]
 
+    label_dictionary = configuration["ExperimentConfiguration"]["label_dictionary"]
+
     training_dataset = UltrasoundDataset(
         json_path=directory_path / "train_dataset.json",
         data_directory=directory_path,
+        label_dictionary=label_dictionary,
         input_channels=input_channels,
         augment=True)
 
     validation_dataset = UltrasoundDataset(
         json_path=directory_path / "validation_dataset.json",
         data_directory=directory_path,
+        label_dictionary=label_dictionary,
         input_channels=input_channels,
         augment=False)
 
     testing_dataset = UltrasoundDataset(
         json_path=directory_path / "test_dataset.json",
         data_directory=directory_path,
+        label_dictionary=label_dictionary,
         input_channels=input_channels,
         augment=False)
 

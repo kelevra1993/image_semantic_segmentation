@@ -3,6 +3,8 @@ import cv2
 import json
 import random
 import kagglehub
+
+import numpy as np
 from tqdm import tqdm
 
 from utilities.os_utilities import make_directory, get_images, save_json
@@ -131,6 +133,95 @@ class DatasetRetriever:
 
         print(f"Processed Dataset Was Saved Under file://{target_directory}")
 
+    def generate_dummy_masks(self) -> None:
+        """
+        Generates and saves the dummy masks for multi-class segmentation, and burns them into the images.
+
+        This method iterates over all preprocessed images and creates three distinct, non-overlapping
+        dummy masks for each image: a square, a letter B, and a plus sign. These dummy shapes are
+        used to train the network on multi-class segmentation. The shapes are randomly placed, and
+        we ensure they do not intersect with each other or the original masks. We also generate the
+        objects with larger dimensions and line thickness to ensure they are easily segmentable. 
+        Crucially, we draw these shapes directly onto the input image in white so the neural network
+        can detect them.
+
+        Returns:
+            None
+        """
+        directory_name = f"preprocessed_{self.image_size}"
+        directory_name += "_KAR" if self.keep_aspect_ratio else ""
+        target_directory = os.path.join(self.dataset_directory, directory_name)
+
+        all_files = get_images(target_directory, basename=True)
+        # Filter out masks, only keep raw images
+        images = [file_name for file_name in all_files if '_mask' not in file_name and not any(
+            suffix in file_name for suffix in ['_object_b', '_object_plus', '_object_square'])]
+
+        for image_name in tqdm(images, desc="Generating Dummy Masks & Updating Images"):
+            base_name = os.path.splitext(image_name)[0]
+
+            # Load the original image to burn shapes onto it
+            image_path = os.path.join(target_directory, image_name)
+            image_array = cv2.imread(image_path)
+
+            # Load original masks to avoid overlap
+            original_masks = [file_name for file_name in all_files if file_name.startswith(base_name + '_mask')]
+
+            combined_mask = np.zeros((self.image_size, self.image_size), dtype=np.uint8)
+            for mask_name in original_masks:
+                mask_path = os.path.join(target_directory, mask_name)
+                mask_array = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
+                combined_mask = np.maximum(combined_mask, mask_array)
+
+            masks = [combined_mask]
+
+            for shape_type, suffix in [("square", "_object_square"), ("B", "_object_b"), ("+", "_object_plus")]:
+                dummy_mask = np.zeros((self.image_size, self.image_size), dtype=np.uint8)
+                attempts = 0
+                while attempts < 100:
+                    attempts += 1
+                    temporary_dummy_mask = np.zeros_like(dummy_mask)
+
+                    if shape_type == "square":
+                        size = random.randint(50, 100)  # Increased size significantly
+                        x_coordinate = random.randint(0, self.image_size - size - 1)
+                        y_coordinate = random.randint(0, self.image_size - size - 1)
+                        cv2.rectangle(temporary_dummy_mask, (x_coordinate, y_coordinate),
+                                      (x_coordinate + size, y_coordinate + size), 255, -1)
+                    elif shape_type == "B":
+                        x_coordinate = random.randint(50, self.image_size - 80)
+                        y_coordinate = random.randint(80, self.image_size - 50)
+                        cv2.putText(temporary_dummy_mask, "B", (x_coordinate, y_coordinate), cv2.FONT_HERSHEY_SIMPLEX,
+                                    3.0, 255, 6)  # Increased font scale and thickness
+                    elif shape_type == "+":
+                        x_coordinate = random.randint(50, self.image_size - 80)
+                        y_coordinate = random.randint(80, self.image_size - 50)
+                        cv2.putText(temporary_dummy_mask, "+", (x_coordinate, y_coordinate), cv2.FONT_HERSHEY_SIMPLEX,
+                                    3.0, 255, 6)  # Increased font scale and thickness
+
+                    # Combine all generated masks to check intersections
+                    combined_existing_masks = np.zeros_like(dummy_mask)
+                    for existing_mask in masks:
+                        combined_existing_masks = np.maximum(combined_existing_masks, existing_mask)
+
+                    intersection = np.logical_and(temporary_dummy_mask > 0, combined_existing_masks > 0)
+                    if not np.any(intersection):
+                        masks.append(temporary_dummy_mask)
+                        output_path = os.path.join(target_directory, f"{base_name}{suffix}.png")
+                        cv2.imwrite(output_path, temporary_dummy_mask, [cv2.IMWRITE_PNG_COMPRESSION, 0])
+
+                        # Burn the shape into the input image (setting shape pixels to white 255)
+                        image_array[temporary_dummy_mask > 0] = 255
+                        break
+                else:
+                    # Fallback to empty if a spot is not found
+                    masks.append(dummy_mask)
+                    output_path = os.path.join(target_directory, f"{base_name}{suffix}.png")
+                    cv2.imwrite(output_path, dummy_mask, [cv2.IMWRITE_PNG_COMPRESSION, 0])
+
+            # Save the modified input image back to disk
+            cv2.imwrite(image_path, image_array, [cv2.IMWRITE_PNG_COMPRESSION, 0])
+
     def create_train_validation_test_split(self, train_ratio: float = 0.7,
                                            validation_ratio: float = 0.2) -> None:
         """
@@ -164,7 +255,11 @@ class DatasetRetriever:
             base_name = os.path.splitext(image_name)[0]
 
             # Find all corresponding masks for the current image
-            masks = [file_name for file_name in all_files if file_name.startswith(base_name + '_mask')]
+            masks = {
+                "original": [file_name for file_name in all_files if file_name.startswith(base_name + '_mask')],
+                "object_square": f"{base_name}_object_square.png",
+                "object_b": f"{base_name}_object_b.png",
+                "object_plus": f"{base_name}_object_plus.png"}
 
             dataset_entries.append({"image_name": image_name, "masks": masks})
 
@@ -198,4 +293,5 @@ dataset_retriever = DatasetRetriever(dataset_directory=dataset_directory,
 dataset_retriever.download_dataset()
 dataset_retriever.clean_dataset()
 dataset_retriever.preprocess_dataset()
+dataset_retriever.generate_dummy_masks()
 dataset_retriever.create_train_validation_test_split()
