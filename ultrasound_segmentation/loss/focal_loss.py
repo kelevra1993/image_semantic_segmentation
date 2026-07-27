@@ -36,8 +36,6 @@ class FocalLoss(nn.Module):
 
         # Shape of model_predictions => (batch, number_classes, height, width)
         # Shape of ground_truths => (batch, number_classes, height, width) as one hot encoded on number_classes
-        print_tensor_status(model_predictions)
-
         # Compute the softmax for the input, done on the number_classes,
         # Shape should still be (batch, number_classes, height, width)
         model_output_probabilities = torch.softmax(model_predictions, dim=-3)
@@ -72,20 +70,9 @@ class FocalLoss(nn.Module):
         positive_pixels_per_class = torch.sum(ground_truths, dim=[-1, -2], keepdim=True)
         focal_loss_denominator = torch.clamp(torch.sum(input=positive_pixels_per_class * ground_truths, dim=-3), min=1)
 
-        # Get the final normalized focal loss (and average it accross batches)
-        batched_focal_loss = torch.sum(focal_loss_numerator / focal_loss_denominator, dim=[-1, -2])
+        # Get the final normalized focal loss (and average it across batches)
+        focal_loss_image = focal_loss_numerator / focal_loss_denominator
+        batched_focal_loss = torch.sum(focal_loss_image, dim=[-1, -2])
         focal_loss = torch.mean(batched_focal_loss)
 
-        focal_loss_image = focal_loss_numerator/ focal_loss_denominator
-        for index in range(self.alpha.shape[1]):
-            focal_loss_class_image = torch.nn.functional.normalize(focal_loss_image[0])
-            index_model_predictions = torch.sigmoid(model_predictions[0, index])
-
-            probabilities_image = torch.nn.functional.normalize(torch.softmax(model_predictions, dim=-3)[0,index])
-            cv2.imshow(f"Model - Prediction", index_model_predictions.detach().cpu().numpy())
-            cv2.imshow(f"Ground Truth", ground_truths[0, index].detach().cpu().numpy())
-            cv2.imshow(f"Focal Loss", focal_loss_class_image.detach().cpu().numpy())
-            print_tensor_status(index_model_predictions,name="index_model_predictions")
-            cv2.waitKey(0)
-        exit()
-
+        return focal_loss, focal_loss_image
