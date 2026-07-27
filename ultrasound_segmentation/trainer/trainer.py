@@ -81,6 +81,8 @@ class Trainer:
 
         # Metric tracking
         self.tracked_metrics_mapping = {"total_loss": "Total BCE Loss"}
+        for label_name, index in self.experiment_configuration["label_dictionary"].items():
+            self.tracked_metrics_mapping[f"iou_{label_name}"] = f"IoU {label_name.capitalize()}" 
 
     def setup_training_paths(self) -> tuple[Path, Path]:
         """
@@ -349,6 +351,33 @@ class Trainer:
 
         print_green(f"Successfully saved {samples_processed} sample predictions to {output_directory}")
 
+    def intersection_over_union_per_class(self, predictions: torch.Tensor, targets: torch.Tensor, smooth: float = 1e-6) -> dict[str, torch.Tensor]:
+        """
+        Computes the Intersection over Union (IoU) for each class independently.
+
+        Args:
+            predictions (torch.Tensor): The model's raw logits output of shape (B, C, H, W).
+            targets (torch.Tensor): The ground truth mask tensor of shape (B, C, H, W).
+            smooth (float, optional): A small constant to avoid division by zero. Defaults to 1e-6.
+
+        Returns:
+            dict[str, torch.Tensor]: A dictionary mapping class IoU keys to their calculated tensor values.
+        """
+        predicted_masks = (torch.sigmoid(predictions) > 0.5).to(self.dtype)
+        ious = {}
+        
+        for label_name, index in self.experiment_configuration["label_dictionary"].items():
+            predicted_class_masks = predicted_masks[:, index, :, :]
+            target_class_masks = targets[:, index, :, :]
+            
+            intersection = (predicted_class_masks * target_class_masks).sum(dim=(1, 2))
+            union = predicted_class_masks.sum(dim=(1, 2)) + target_class_masks.sum(dim=(1, 2)) - intersection
+            
+            iou = (intersection + smooth) / (union + smooth)
+            ious[f"iou_{label_name}"] = iou.mean()
+            
+        return ious
+
     def run_model_iteration(self, batch_images: torch.Tensor, batch_masks: torch.Tensor,
                             writer: SummaryWriter, iteration: int,
                             tracker_dictionary: dict | None) -> tuple[torch.Tensor, torch.Tensor]:
@@ -377,6 +406,8 @@ class Trainer:
         total_loss = self.criterion(model_outputs, batch_masks)
 
         metric_dictionary = {"total_loss": total_loss}
+        iou_metrics = self.intersection_over_union_per_class(model_outputs, batch_masks)
+        metric_dictionary.update(iou_metrics)
 
         # Update tracker dictionary (rolling average accumulation)
         if tracker_dictionary is not None:
