@@ -82,7 +82,7 @@ class Trainer:
         # Metric tracking
         self.tracked_metrics_mapping = {"total_loss": "Total BCE Loss"}
         for label_name, index in self.experiment_configuration["label_dictionary"].items():
-            self.tracked_metrics_mapping[f"iou_{label_name}"] = f"IoU {label_name.capitalize()}" 
+            self.tracked_metrics_mapping[f"iou_{label_name}"] = f"IoU {label_name.capitalize()}"
 
     def setup_training_paths(self) -> tuple[Path, Path]:
         """
@@ -332,15 +332,15 @@ class Trainer:
                     if samples_processed >= number_samples:
                         break
 
-                    img_to_add = test_images[i:i + 1] # (1, C, H, W)
+                    img_to_add = test_images[i:i + 1]  # (1, C, H, W)
                     if img_to_add.shape[1] == 3:
                         img_to_add = img_to_add.mean(dim=1, keepdim=True)
 
                     components = [img_to_add]
                     for c in range(test_masks.shape[1]):
-                        components.append(test_masks[i:i+1, c:c+1, :, :])
+                        components.append(test_masks[i:i + 1, c:c + 1, :, :])
                     for c in range(predicted_masks.shape[1]):
-                        components.append(predicted_masks[i:i+1, c:c+1, :, :])
+                        components.append(predicted_masks[i:i + 1, c:c + 1, :, :])
 
                     comparison_grid = torch.cat(components, dim=0)
 
@@ -351,7 +351,8 @@ class Trainer:
 
         print_green(f"Successfully saved {samples_processed} sample predictions to {output_directory}")
 
-    def intersection_over_union_per_class(self, predictions: torch.Tensor, targets: torch.Tensor, smooth: float = 1e-6) -> dict[str, torch.Tensor]:
+    def intersection_over_union_per_class(self, predictions: torch.Tensor, targets: torch.Tensor,
+                                          smooth: float = 1e-6) -> dict[str, torch.Tensor]:
         """
         Computes the Intersection over Union (IoU) for each class independently.
 
@@ -365,17 +366,17 @@ class Trainer:
         """
         predicted_masks = (torch.sigmoid(predictions) > 0.5).to(self.dtype)
         ious = {}
-        
+
         for label_name, index in self.experiment_configuration["label_dictionary"].items():
             predicted_class_masks = predicted_masks[:, index, :, :]
             target_class_masks = targets[:, index, :, :]
-            
+
             intersection = (predicted_class_masks * target_class_masks).sum(dim=(1, 2))
             union = predicted_class_masks.sum(dim=(1, 2)) + target_class_masks.sum(dim=(1, 2)) - intersection
-            
+
             iou = (intersection + smooth) / (union + smooth)
             ious[f"iou_{label_name}"] = iou.mean()
-            
+
         return ious
 
     def run_model_iteration(self, batch_images: torch.Tensor, batch_masks: torch.Tensor,
