@@ -1,6 +1,7 @@
 import torch
 import cv2
 import numpy as np
+import math
 from typing import Tuple, Dict
 
 
@@ -79,7 +80,7 @@ def create_square_data(
     return ground_truth_numpy_array, prediction_logits
 
 
-def create_triangle_data(
+def create_pentagon_data(
         quadrant_width: int,
         quadrant_height: int,
         left_logit: float,
@@ -87,38 +88,38 @@ def create_triangle_data(
         inactive_logit: float = -10.0
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
-    Generates ground truth and prediction logits for a triangle.
+    Generates ground truth and prediction logits for a pentagon.
     
     Args:
         quadrant_width (int): The width of the image quadrant.
         quadrant_height (int): The height of the image quadrant.
-        left_logit (float): The prediction logit for the left half of the triangle.
-        right_logit (float): The prediction logit for the right half of the triangle.
-        inactive_logit (float): The default logit for pixels outside the triangle.
+        left_logit (float): The prediction logit for the left half of the pentagon.
+        right_logit (float): The prediction logit for the right half of the pentagon.
+        inactive_logit (float): The default logit for pixels outside the pentagon.
         
     Returns:
         Tuple[np.ndarray, np.ndarray]: The ground truth mask and prediction logits mask.
     """
     ground_truth_numpy_array = np.zeros((quadrant_height, quadrant_width), dtype=np.uint8)
-    triangle_center_x, triangle_center_y = quadrant_width // 2, quadrant_height // 2
-    triangle_offset = min(quadrant_width, quadrant_height) // 4
+    pentagon_center_x, pentagon_center_y = quadrant_width // 2, quadrant_height // 2
+    pentagon_radius = min(quadrant_width, quadrant_height) // 4
 
-    # Pointing upwards
-    point_1 = [triangle_center_x, triangle_center_y - triangle_offset]
-    point_2 = [triangle_center_x - triangle_offset, triangle_center_y + triangle_offset]
-    point_3 = [triangle_center_x + triangle_offset, triangle_center_y + triangle_offset]
+    pentagon_points = []
+    for i in range(5):
+        angle_rad = math.radians(i * 72 - 90)
+        x = pentagon_center_x + int(pentagon_radius * math.cos(angle_rad))
+        y = pentagon_center_y + int(pentagon_radius * math.sin(angle_rad))
+        pentagon_points.append([x, y])
 
-    triangle_points = np.array([point_1, point_2, point_3], np.int32)
-    triangle_points = triangle_points.reshape((-1, 1, 2))
-
-    cv2.fillPoly(img=ground_truth_numpy_array, pts=[triangle_points], color=1)
+    pentagon_points = np.array(pentagon_points, np.int32).reshape((-1, 1, 2))
+    cv2.fillPoly(img=ground_truth_numpy_array, pts=[pentagon_points], color=1)
 
     prediction_logits = np.full((quadrant_height, quadrant_width), inactive_logit, dtype=np.float32)
-    left_triangle_mask = (ground_truth_numpy_array == 1) & (np.arange(quadrant_width) < triangle_center_x)
-    prediction_logits[left_triangle_mask] = left_logit
+    left_pentagon_mask = (ground_truth_numpy_array == 1) & (np.arange(quadrant_width) < pentagon_center_x)
+    prediction_logits[left_pentagon_mask] = left_logit
 
-    right_triangle_mask = (ground_truth_numpy_array == 1) & (np.arange(quadrant_width) >= triangle_center_x)
-    prediction_logits[right_triangle_mask] = right_logit
+    right_pentagon_mask = (ground_truth_numpy_array == 1) & (np.arange(quadrant_width) >= pentagon_center_x)
+    prediction_logits[right_pentagon_mask] = right_logit
 
     return ground_truth_numpy_array, prediction_logits
 
@@ -170,14 +171,14 @@ def create_input_data(image_size: Tuple[int, int],
     0: Background
     1: Circle (Top-Left quadrant)
     2: Square (Top-Right quadrant)
-    3: Triangle (Bottom-Left quadrant)
+    3: Pentagon (Bottom-Left quadrant)
     4: Ellipse (Bottom-Right quadrant)
     
     Args:
         image_size (Tuple[int, int]): The total (height, width) of the image.
         background_logit (float): The default prediction logit for the background class.
         logit_dictionary (Dict[str, Dict[str, float]]): A dictionary specifying the prediction logits 
-            for each foreground class. Must include nested dicts for 'circle', 'square', 'triangle', 
+            for each foreground class. Must include nested dicts for 'circle', 'square', 'pentagon', 
             and 'ellipse' with 'left_logit' and 'right_logit' specified.
             
     Returns:
@@ -204,6 +205,7 @@ def create_input_data(image_size: Tuple[int, int],
     circle_ground_truth, circle_prediction = create_circle_data(quadrant_width, quadrant_height, circle_left,
                                                                 circle_right, inactive_logit)
 
+
     ground_truth_tensor[0, 1, 0:quadrant_height, 0:quadrant_width] = torch.from_numpy(circle_ground_truth)
     prediction_tensor[0, 1, 0:quadrant_height, 0:quadrant_width] = torch.from_numpy(circle_prediction)
 
@@ -215,13 +217,13 @@ def create_input_data(image_size: Tuple[int, int],
     ground_truth_tensor[0, 2, 0:quadrant_height, quadrant_width:image_width] = torch.from_numpy(square_ground_truth)
     prediction_tensor[0, 2, 0:quadrant_height, quadrant_width:image_width] = torch.from_numpy(square_prediction)
 
-    # 3. Triangle (Bottom-Left)
-    triangle_left = logit_dictionary["triangle"]["left_logit"]
-    triangle_right = logit_dictionary["triangle"]["right_logit"]
-    triangle_ground_truth, triangle_prediction = create_triangle_data(quadrant_width, quadrant_height, triangle_left,
-                                                                      triangle_right, inactive_logit)
-    ground_truth_tensor[0, 3, quadrant_height:image_height, 0:quadrant_width] = torch.from_numpy(triangle_ground_truth)
-    prediction_tensor[0, 3, quadrant_height:image_height, 0:quadrant_width] = torch.from_numpy(triangle_prediction)
+    # 3. Pentagon (Bottom-Left)
+    pentagon_left = logit_dictionary["pentagon"]["left_logit"]
+    pentagon_right = logit_dictionary["pentagon"]["right_logit"]
+    pentagon_ground_truth, pentagon_prediction = create_pentagon_data(quadrant_width, quadrant_height, pentagon_left,
+                                                                      pentagon_right, inactive_logit)
+    ground_truth_tensor[0, 3, quadrant_height:image_height, 0:quadrant_width] = torch.from_numpy(pentagon_ground_truth)
+    prediction_tensor[0, 3, quadrant_height:image_height, 0:quadrant_width] = torch.from_numpy(pentagon_prediction)
 
     # 4. Ellipse (Bottom-Right)
     ellipse_left = logit_dictionary["ellipse"]["left_logit"]
@@ -238,3 +240,7 @@ def create_input_data(image_size: Tuple[int, int],
     ground_truth_tensor[0, 0, :, :] = 1.0 - foreground_sum
 
     return ground_truth_tensor, prediction_tensor
+
+def print_non_zero_pixels(numpy_array,name):
+
+    print(f"We Have {} None Zero Pixels")

@@ -10,7 +10,7 @@ def debug_focal_loss() -> None:
     Creates a 5-class synthetic testing scenario to visually verify the focal loss implementation.
 
     This function utilizes the modular data generators from focal_loss_functions.py to create
-    a full 5-channel image containing a circle, square, triangle, and ellipse in each quadrant.
+    a full 5-channel image containing a circle, square, pentagon, and ellipse in each quadrant.
     It passes the generated tensors to the FocalLoss module to review behavior under different
     logit configurations.
     """
@@ -18,7 +18,7 @@ def debug_focal_loss() -> None:
     parameter_dictionary = {
         "circle": {"left_logit": 5.0, "right_logit": 1.0, "alpha": 1.0},
         "square": {"left_logit": 5.0, "right_logit": 1.0, "alpha": 1.0},
-        "triangle": {"left_logit": 5.0, "right_logit": 1.0, "alpha": 1.0},
+        "pentagon": {"left_logit": 5.0, "right_logit": 1.0, "alpha": 1.0},
         "ellipse": {"left_logit": 5.0, "right_logit": 1.0, "alpha": 1.0},
     }
 
@@ -34,9 +34,9 @@ def debug_focal_loss() -> None:
     focal_loss = FocalLoss(alpha=[1.0,
                                   parameter_dictionary["circle"]["alpha"],
                                   parameter_dictionary["square"]["alpha"],
-                                  parameter_dictionary["triangle"]["alpha"],
+                                  parameter_dictionary["pentagon"]["alpha"],
                                   parameter_dictionary["ellipse"]["alpha"]],
-                           gamma=1.0, device=device, dtype=torch.float32)
+                           gamma=2.0, device=device, dtype=torch.float32)
 
     # 4. Compute Loss
     print(f"Feeding 5-channel inputs to FocalLoss...")
@@ -44,7 +44,10 @@ def debug_focal_loss() -> None:
 
     print(f"Computed Focal Loss: {loss.item()}")
 
-    focal_loss_class_image = torch.nn.functional.normalize(focal_loss_image[0])
+    # Globally min-max normalize the image
+    focal_min, focal_max = focal_loss_image[0].min(), focal_loss_image[0].max()
+    focal_loss_class_image = (focal_loss_image[0] - focal_min) / (focal_max - focal_min + 1e-8)
+
     print_tensor_status(prediction_tensor, "prediction_tensor")
 
     for index, object_class in enumerate(parameter_dictionary, start=1):
