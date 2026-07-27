@@ -111,12 +111,12 @@ def get_dataloaders(preprocessed_directory: str | Path,
                     model_configuration: Dict[str, Any], batch_size: int = 8,
                     number_of_workers: int = 4) -> Tuple[DataLoader, DataLoader, DataLoader]:
     """
-    todo to be updated
     Creates DataLoaders for the training, validation, and testing splits.
 
     Args:
         preprocessed_directory (str | Path): The directory containing the preprocessed dataset and JSON splits.
-        configuration (Dict[str, Any]): The loaded configuration dictionary, expected to contain the model parameters.
+        experiment_configuration (Dict[str, Any]): Dictionary containing the core training parameters and label mapping.
+        model_configuration (Dict[str, Any]): Dictionary containing the model architecture parameters like input channels.
         batch_size (int, optional): The number of samples per batch. Defaults to 8.
         number_of_workers (int, optional): The number of subprocesses to use for data loading. Defaults to 4.
 

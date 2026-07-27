@@ -132,7 +132,9 @@ class Trainer:
         print_blue("Initializing U-Net DataLoaders...", add_separators=True)
 
         train_dataloader, validation_dataloader, test_dataloader = get_dataloaders(
-            preprocessed_directory=self.dataset_folder, configuration=self.model_configuration,
+            preprocessed_directory=self.dataset_folder,
+            experiment_configuration=self.experiment_configuration,
+            model_configuration=self.model_configuration,
             batch_size=self.batch_size, number_of_workers=4)
 
         return train_dataloader, validation_dataloader, test_dataloader
