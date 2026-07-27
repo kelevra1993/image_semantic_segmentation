@@ -189,7 +189,7 @@ def create_input_data(image_size: Tuple[int, int],
     quadrant_height, quadrant_width = image_height // 2, image_width // 2
     number_of_classes = 5
     batch_size = 1
-    inactive_logit = -10.0
+    inactive_logit = -20.0
 
     ground_truth_tensor = torch.zeros((batch_size, number_of_classes, image_height, image_width), dtype=torch.float32)
     prediction_tensor = torch.full((batch_size, number_of_classes, image_height, image_width), inactive_logit,

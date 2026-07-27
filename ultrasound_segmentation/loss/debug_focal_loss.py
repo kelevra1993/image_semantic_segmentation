@@ -15,22 +15,28 @@ def debug_focal_loss() -> None:
     logit configurations.
     """
     # 1. Define Logits Dictionary
-    logit_dictionary = {
-        "circle": {"left_logit": 5.0, "right_logit": 1.0},
-        "square": {"left_logit": 3.0, "right_logit": -1.0},
-        "triangle": {"left_logit": 2.0, "right_logit": 0.0},
-        "ellipse": {"left_logit": 4.0, "right_logit": -2.0},
+    parameter_dictionary = {
+        "circle": {"left_logit": 5.0, "right_logit": 1.0, "alpha": 1.0},
+        "square": {"left_logit": 5.0, "right_logit": 1.0, "alpha": 1.0},
+        "triangle": {"left_logit": 5.0, "right_logit": 1.0, "alpha": 1.0},
+        "ellipse": {"left_logit": 5.0, "right_logit": 1.0, "alpha": 1.0},
     }
 
     # 2. Generate Data
     image_size = (400, 400)
     ground_truth_tensor, prediction_tensor = create_input_data(
-        image_size=image_size, background_logit=0.0, logit_dictionary=logit_dictionary)
+        image_size=image_size, background_logit=0.0, logit_dictionary=parameter_dictionary)
 
     # 3. Initialize FocalLoss
     device = torch.device('cpu')
     number_of_classes = 5
-    focal_loss = FocalLoss(alpha=[1.0] * number_of_classes, gamma=1.0, device=device, dtype=torch.float32)
+
+    focal_loss = FocalLoss(alpha=[1.0,
+                                  parameter_dictionary["circle"]["alpha"],
+                                  parameter_dictionary["square"]["alpha"],
+                                  parameter_dictionary["triangle"]["alpha"],
+                                  parameter_dictionary["ellipse"]["alpha"]],
+                           gamma=1.0, device=device, dtype=torch.float32)
 
     # 4. Compute Loss
     print(f"Feeding 5-channel inputs to FocalLoss...")
@@ -41,21 +47,41 @@ def debug_focal_loss() -> None:
     focal_loss_class_image = torch.nn.functional.normalize(focal_loss_image[0])
     print_tensor_status(prediction_tensor, "prediction_tensor")
 
-    for index, object_class in enumerate(logit_dictionary, start=1):
+    for index, object_class in enumerate(parameter_dictionary, start=1):
         index_model_predictions = torch.sigmoid(prediction_tensor[0, index])
 
-        # probabilities_image = torch.nn.functional.normalize(torch.softmax(prediction_tensor, dim=-3)[0,index])
+        # Define grid properties (using scaled down windows to fit on a normal screen)
+        window_size = 400
+        spacing_x = 100
+        spacing_y = 100  # larger y spacing to account for OS window title bars
+
+        # Calculate X and Y positions
+        col_0_x = spacing_x
+        col_1_x = col_0_x + window_size + spacing_x
+        col_2_x = col_1_x + window_size + spacing_x
+        row_y = spacing_y + (index - 1) * (window_size + spacing_y)
+
+        # 1. Model Prediction Window
         prediction_name = f"Model Prediction - {object_class}"
+        cv2.namedWindow(prediction_name, cv2.WINDOW_NORMAL)
+        cv2.resizeWindow(prediction_name, window_size, window_size)
         cv2.imshow(prediction_name, index_model_predictions.detach().cpu().numpy())
-        cv2.moveWindow(prediction_name,x=10,y=index*10)
 
+        cv2.moveWindow(prediction_name, col_1_x, row_y)
+
+        # 2. Ground Truth Window
         ground_truth_name = f"Ground Truth - {object_class}"
+        cv2.namedWindow(ground_truth_name, cv2.WINDOW_NORMAL)
+        cv2.resizeWindow(ground_truth_name, window_size, window_size)
         cv2.imshow(ground_truth_name, ground_truth_tensor[0, index].detach().cpu().numpy())
-        cv2.moveWindow(ground_truth_name,x=image_size[0]*2,y=image_size[0]*index)
+        cv2.moveWindow(ground_truth_name, col_0_x, row_y)
 
+        # 3. Focal Loss Window
         focal_loss_name = f"Focal Loss - {object_class}"
+        cv2.namedWindow(focal_loss_name, cv2.WINDOW_NORMAL)
+        cv2.resizeWindow(focal_loss_name, window_size, window_size)
         cv2.imshow(focal_loss_name, focal_loss_class_image.detach().cpu().numpy())
-        cv2.moveWindow(focal_loss_name,x=image_size[0]*4,y=image_size[0]*index)
+        cv2.moveWindow(focal_loss_name, col_2_x, row_y)
 
         # print_tensor_status(index_model_predictions, name="index_model_predictions")
     cv2.waitKey(0)
