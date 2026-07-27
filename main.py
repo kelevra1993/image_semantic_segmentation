@@ -22,6 +22,7 @@ annotations = AnnotationsConverter(image_path=bacteria_path,
 # Define where to save the masks
 mask_path = os.path.join(dataset_directory, "mask_annotations.png")
 
+# Save the mask (by default just one channel with pixel intensities as classes)
 # We also save an image mask that is easily interpretable by a human
 annotations.save_mask(output_file_path=mask_path, add_interpretable_version=True)
 
