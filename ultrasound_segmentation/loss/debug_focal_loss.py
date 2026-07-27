@@ -2,6 +2,7 @@ import cv2
 import torch
 from ultrasound_segmentation.loss.focal_loss import FocalLoss
 from ultrasound_segmentation.loss.focal_loss_functions import create_input_data
+from utilities.os_utilities import print_yellow
 from utilities.tensor_utilities import print_tensor_status
 
 
@@ -16,11 +17,10 @@ def debug_focal_loss() -> None:
     """
     # 1. Define Logits Dictionary
     parameter_dictionary = {
-        "circle": {"left_logit": 1.2, "right_logit": 1.0, "alpha": 1.0},
-        "square": {"left_logit": 1.2, "right_logit": 1.0, "alpha": 1.0},
-        "pentagon": {"left_logit": 1.2, "right_logit": 1.0, "alpha": 1.0},
-        "ellipse": {"left_logit": 1.2, "right_logit": 1.0, "alpha": 1.0},
-    }
+        "circle": {"left_logit": 2.8, "right_logit": 1.0, "alpha": 1.0},
+        "square": {"left_logit": 2.8, "right_logit": 1.0, "alpha": 1.0},
+        "pentagon": {"left_logit": 1.0, "right_logit": 5.0, "alpha": 1.0},
+        "ellipse": {"left_logit": 2.8, "right_logit": 1.0, "alpha": 1.0}}
 
     # 2. Generate Data
     image_size = (400, 400)
@@ -35,7 +35,7 @@ def debug_focal_loss() -> None:
                                   parameter_dictionary["square"]["alpha"],
                                   parameter_dictionary["pentagon"]["alpha"],
                                   parameter_dictionary["ellipse"]["alpha"]],
-                           gamma=5.0, device=device, dtype=torch.float32)
+                           gamma=0.50, device=device, dtype=torch.float32)
 
     # 4. Compute Loss
     loss, focal_loss_image = focal_loss(prediction_tensor, ground_truth_tensor)
@@ -44,15 +44,21 @@ def debug_focal_loss() -> None:
     focal_min, focal_max = focal_loss_image[0].min(), focal_loss_image[0].max()
     focal_loss_class_image = (focal_loss_image[0] - focal_min) / (focal_max - focal_min + 1e-8)
 
-    print_tensor_status(prediction_tensor, "prediction_tensor")
-
+    # Compute predictions softmaxes
+    print(50*"#")
+    print_yellow("----Class Probabilities----")
+    for predicted_class, predicted_information in parameter_dictionary.items():
+        softmax = torch.softmax(
+            torch.tensor(data=[predicted_information["left_logit"], predicted_information["right_logit"]]),dim=0)
+        print(f" Softmax For {predicted_class.upper()} :: {softmax.numpy().round(3)}")
+    print(50 * "#")
     for index, object_class in enumerate(parameter_dictionary, start=1):
         index_model_predictions = torch.sigmoid(prediction_tensor[0, index])
 
         # Define grid properties (using scaled down windows to fit on a normal screen)
         window_size = 400
-        spacing_x = 100
-        spacing_y = 100  # larger y spacing to account for OS window title bars
+        spacing_x = 80
+        spacing_y = 40  # larger y spacing to account for OS window title bars
 
         # Calculate X and Y positions
         col_0_x = spacing_x
