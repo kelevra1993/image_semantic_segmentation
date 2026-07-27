@@ -106,9 +106,12 @@ class UltrasoundDataset(Dataset):
         return image_tensor, mask_tensor
 
 
-def get_dataloaders(preprocessed_directory: str | Path, configuration: Dict[str, Any], batch_size: int = 8,
+def get_dataloaders(preprocessed_directory: str | Path,
+                    experiment_configuration: Dict[str, Any],
+                    model_configuration: Dict[str, Any], batch_size: int = 8,
                     number_of_workers: int = 4) -> Tuple[DataLoader, DataLoader, DataLoader]:
     """
+    todo to be updated
     Creates DataLoaders for the training, validation, and testing splits.
 
     Args:
@@ -123,10 +126,8 @@ def get_dataloaders(preprocessed_directory: str | Path, configuration: Dict[str,
     directory_path = Path(preprocessed_directory)
 
     # Retrieve input_channels from the configuration dictionary
-    unet_configuration = configuration["UnetConfiguration"]
-    input_channels = unet_configuration["input_channels"]
-
-    label_dictionary = configuration["ExperimentConfiguration"]["label_dictionary"]
+    input_channels = model_configuration["input_channels"]
+    label_dictionary = experiment_configuration["label_dictionary"]
 
     training_dataset = UltrasoundDataset(
         json_path=directory_path / "train_dataset.json",

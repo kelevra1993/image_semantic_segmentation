@@ -248,7 +248,8 @@ class DatasetRetriever:
         all_files = get_images(target_directory, basename=True)
 
         # Identify all images (those without '_mask' in their name)
-        images = [file_name for file_name in all_files if '_mask' not in file_name]
+        images = [file_name for file_name in all_files if '_mask' not in file_name and not any(
+            suffix in file_name for suffix in ['_object_b', '_object_plus', '_object_square'])]
 
         dataset_entries = []
         for image_name in images:
