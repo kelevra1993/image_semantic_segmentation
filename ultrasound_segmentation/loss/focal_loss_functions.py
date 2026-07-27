@@ -102,7 +102,7 @@ def create_pentagon_data(
     """
     ground_truth_numpy_array = np.zeros((quadrant_height, quadrant_width), dtype=np.uint8)
     pentagon_center_x, pentagon_center_y = quadrant_width // 2, quadrant_height // 2
-    pentagon_radius = min(quadrant_width, quadrant_height) // 4
+    pentagon_radius = min(quadrant_width, quadrant_height) // 5
 
     pentagon_points = []
     for i in range(5):
@@ -204,6 +204,7 @@ def create_input_data(image_size: Tuple[int, int],
     circle_right = logit_dictionary["circle"]["right_logit"]
     circle_ground_truth, circle_prediction = create_circle_data(quadrant_width, quadrant_height, circle_left,
                                                                 circle_right, inactive_logit)
+    print_non_zero_pixels(circle_ground_truth, "circle")
 
 
     ground_truth_tensor[0, 1, 0:quadrant_height, 0:quadrant_width] = torch.from_numpy(circle_ground_truth)
@@ -214,6 +215,7 @@ def create_input_data(image_size: Tuple[int, int],
     square_right = logit_dictionary["square"]["right_logit"]
     square_ground_truth, square_prediction = create_square_data(quadrant_width, quadrant_height, square_left,
                                                                 square_right, inactive_logit)
+    print_non_zero_pixels(square_ground_truth, "square")
     ground_truth_tensor[0, 2, 0:quadrant_height, quadrant_width:image_width] = torch.from_numpy(square_ground_truth)
     prediction_tensor[0, 2, 0:quadrant_height, quadrant_width:image_width] = torch.from_numpy(square_prediction)
 
@@ -222,6 +224,7 @@ def create_input_data(image_size: Tuple[int, int],
     pentagon_right = logit_dictionary["pentagon"]["right_logit"]
     pentagon_ground_truth, pentagon_prediction = create_pentagon_data(quadrant_width, quadrant_height, pentagon_left,
                                                                       pentagon_right, inactive_logit)
+    print_non_zero_pixels(pentagon_ground_truth, "pentagon")
     ground_truth_tensor[0, 3, quadrant_height:image_height, 0:quadrant_width] = torch.from_numpy(pentagon_ground_truth)
     prediction_tensor[0, 3, quadrant_height:image_height, 0:quadrant_width] = torch.from_numpy(pentagon_prediction)
 
@@ -230,6 +233,7 @@ def create_input_data(image_size: Tuple[int, int],
     ellipse_right = logit_dictionary["ellipse"]["right_logit"]
     ellipse_ground_truth, ellipse_prediction = create_ellipse_data(quadrant_width, quadrant_height, ellipse_left,
                                                                    ellipse_right, inactive_logit)
+    print_non_zero_pixels(ellipse_ground_truth, "ellipse")
     ground_truth_tensor[0, 4, quadrant_height:image_height, quadrant_width:image_width] = torch.from_numpy(
         ellipse_ground_truth)
     prediction_tensor[0, 4, quadrant_height:image_height, quadrant_width:image_width] = torch.from_numpy(
@@ -238,9 +242,17 @@ def create_input_data(image_size: Tuple[int, int],
     # Background Ground Truth (Where all other classes are 0)
     foreground_sum = torch.sum(ground_truth_tensor[0, 1:, :, :], dim=0)
     ground_truth_tensor[0, 0, :, :] = 1.0 - foreground_sum
+    print_non_zero_pixels(ground_truth_tensor[0, 0, :, :].numpy(), "background")
 
     return ground_truth_tensor, prediction_tensor
 
-def print_non_zero_pixels(numpy_array,name):
-
-    print(f"We Have {} None Zero Pixels")
+def print_non_zero_pixels(numpy_array: np.ndarray, name: str) -> None:
+    """
+    Counts and prints the number of non-zero pixels in a given numpy array.
+    
+    Args:
+        numpy_array (np.ndarray): The array or mask to be evaluated.
+        name (str): The descriptive name of the object or class being evaluated.
+    """
+    non_zero_count = np.count_nonzero(numpy_array)
+    print(f"We Have {non_zero_count} Non Zero Pixels for {name}")

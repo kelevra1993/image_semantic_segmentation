@@ -16,10 +16,10 @@ def debug_focal_loss() -> None:
     """
     # 1. Define Logits Dictionary
     parameter_dictionary = {
-        "circle": {"left_logit": 5.0, "right_logit": 1.0, "alpha": 1.0},
-        "square": {"left_logit": 5.0, "right_logit": 1.0, "alpha": 1.0},
-        "pentagon": {"left_logit": 5.0, "right_logit": 1.0, "alpha": 1.0},
-        "ellipse": {"left_logit": 5.0, "right_logit": 1.0, "alpha": 1.0},
+        "circle": {"left_logit": 1.2, "right_logit": 1.0, "alpha": 1.0},
+        "square": {"left_logit": 1.2, "right_logit": 1.0, "alpha": 1.0},
+        "pentagon": {"left_logit": 1.2, "right_logit": 1.0, "alpha": 1.0},
+        "ellipse": {"left_logit": 1.2, "right_logit": 1.0, "alpha": 1.0},
     }
 
     # 2. Generate Data
@@ -29,20 +29,16 @@ def debug_focal_loss() -> None:
 
     # 3. Initialize FocalLoss
     device = torch.device('cpu')
-    number_of_classes = 5
 
     focal_loss = FocalLoss(alpha=[1.0,
                                   parameter_dictionary["circle"]["alpha"],
                                   parameter_dictionary["square"]["alpha"],
                                   parameter_dictionary["pentagon"]["alpha"],
                                   parameter_dictionary["ellipse"]["alpha"]],
-                           gamma=2.0, device=device, dtype=torch.float32)
+                           gamma=5.0, device=device, dtype=torch.float32)
 
     # 4. Compute Loss
-    print(f"Feeding 5-channel inputs to FocalLoss...")
     loss, focal_loss_image = focal_loss(prediction_tensor, ground_truth_tensor)
-
-    print(f"Computed Focal Loss: {loss.item()}")
 
     # Globally min-max normalize the image
     focal_min, focal_max = focal_loss_image[0].min(), focal_loss_image[0].max()
