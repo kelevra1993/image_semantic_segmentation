@@ -276,7 +276,7 @@ def load_experiment_configuration(configuration_path: str | Path) -> Tuple[Dict[
     model_configuration = configuration
 
     # Convert paths
-    path_keys = ["data_folder", "dataset_folder"]
+    path_keys = ["dataset_folder", "project_root"]
 
     for key in path_keys:
         if key in experiment_configuration:

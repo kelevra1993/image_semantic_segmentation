@@ -1,5 +1,5 @@
 ExperimentConfiguration:
-  project_root: "/home/robert_kelevra/Projects/bacteria_biology/experiments_folder"
+  project_root: "/home/robert_kelevra/Projects/bacteria_biology/experiments_folder/experiment_1"
   dataset_folder: "/home/robert_kelevra/Projects/bacteria_biology/utilities/ultrasound_dataset/preprocessed_512_KAR"
   information_dump: 500
   weight_saving_iterations: 2000

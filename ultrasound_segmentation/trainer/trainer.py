@@ -105,7 +105,7 @@ class Trainer:
 
         return tensorboard_directory, weights_directory
 
-    def setup_tensorboard_writers(self) -> None:
+    def setup_tensorboard_writers(self) -> Tuple[SummaryWriter, Optional[SummaryWriter]]:
         """
         Initializes TensorBoard SummaryWriters for logging training and validation metrics.
 

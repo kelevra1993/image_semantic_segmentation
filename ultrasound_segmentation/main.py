@@ -12,7 +12,7 @@ def main() -> None:
     main training loop.
     """
     # Define configuration path
-    experiment_configuration_path = Path(__file__).parent / "configurations" / f"configuration.yaml"
+    experiment_configuration_path = Path(__file__).parent / "configuration" / f"configuration.yaml"
 
     # Load configuration
     experiment_configuration, model_configuration = load_experiment_configuration(experiment_configuration_path)
@@ -22,7 +22,7 @@ def main() -> None:
                       model_configuration=model_configuration)
 
     # Start training loop
-    print(f"Starting Training For Experiment: {experiment_configuration['experiment_name']}...")
+    print(f"Starting Training For Experiment: {experiment_configuration['project_root']}...")
     trainer.run_training_loop()
     print("Training Example Completed.")
 
