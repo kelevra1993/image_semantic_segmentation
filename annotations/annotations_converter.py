@@ -11,8 +11,8 @@ class AnnotationsConverter:
     """
     A VGG Image Annotation converter in order to get masks for training a neural network.
     """
-    def __init__(self, image_path: str, annotation_path: str, label_dictionary: Dict,
-                 method: Literal["naive", "ambiguous"] = "naive") -> None:
+
+    def __init__(self, image_path: str, annotation_path: str, label_dictionary: Dict) -> None:
         """
         Initializes the converter by loading the image and annotations, and immediately generating the mask.
 
@@ -20,8 +20,6 @@ class AnnotationsConverter:
             image_path (str): Path to the source image file.
             annotation_path (str): Path to the VGG Image Annotator JSON file.
             label_dictionary (Dict): A mapping of string labels to integer pixel values for the mask.
-            method (Literal["naive", "ambiguous"], optional): The strategy for resolving overlapping 
-                polygons. Defaults to "naive".
         """
         self.image_path = image_path
         self.image = cv2.imread(self.image_path)
@@ -31,10 +29,11 @@ class AnnotationsConverter:
         self.image_annotations = self.convert_image_annotations()
 
         self.label_dictionary = label_dictionary
-        self.neural_network_mask = self.get_mask(method=method)
+        self.neural_network_mask = self.get_mask()
 
     def convert_image_annotations(self) -> List[Dict]:
         """
+        todo to be updated
         Extracts and converts the raw VGG Image Annotator (VIA) regions into a standardized format.
 
         This method acts as the initial parsing step for the JSON annotations. It searches the raw
@@ -60,53 +59,24 @@ class AnnotationsConverter:
         converted_image_annotations = []
         for index, annotation_region in enumerate(annotation_regions):
             shape_attributes = annotation_region["shape_attributes"]
+            points = list(zip(shape_attributes["all_points_x"], shape_attributes["all_points_y"]))
+
+            # Compute the area of each polygon since this will determine how they are processed
             converted_image_annotations.append({
                 "label": annotation_region["region_attributes"]["class"],
-                "points": list(zip(shape_attributes["all_points_x"], shape_attributes["all_points_y"]))})
+                "points": points,
+                "area": Polygon(points).area})
+
+        # Order polygons by their area
+        converted_image_annotations = sorted(converted_image_annotations,
+                                             key=lambda x: x["area"],
+                                             reverse=True)
 
         return converted_image_annotations
 
-    def prioritize_largest_membrane(self) -> List[Dict]:
+    def get_mask(self) -> np.ndarray:
         """
-        Reorders the image annotations to ensure the largest membrane is processed first.
-
-        This method resolves ambiguity in the provided annotations where a large membrane spans 
-        approximately the whole image, and contains bacteria regions that themselves have inner 
-        membrane regions. By identifying and placing the largest membrane first in the list, it 
-        ensures that subsequent bacteria and inner regions are drawn correctly on top of it.
-
-        Returns:
-            List[Dict]: A reordered list of annotation dictionaries, with the largest membrane 
-                annotation at the beginning (if any membranes are present).
-        """
-        membrane_areas = []
-
-        found_membrane = False
-
-        for region_information in self.image_annotations:
-            if region_information["label"] == "membrane":
-                membrane_areas.append(Polygon(region_information["points"]).area)
-                found_membrane = True
-            else:
-                membrane_areas.append(0)
-
-        # Just re-order data while keeping the largest membrane as the first element
-        if found_membrane:
-            largest_membrane_index = np.argmax(membrane_areas)
-            re_ordered_image_annotations = [self.image_annotations[largest_membrane_index]]
-
-            for index, image_annotation in enumerate(self.image_annotations):
-                # Ignore largest image annotation since it has already be considered at the beginning
-                if index == largest_membrane_index:
-                    continue
-                re_ordered_image_annotations.append(image_annotation)
-
-            return re_ordered_image_annotations
-        else:
-            return self.image_annotations
-
-    def get_mask(self, method: Literal["naive", "ambiguous"]) -> np.ndarray:
-        """
+        # todo to be updated
         Generates a categorical 2D image mask from the parsed polygon annotations.
 
         This function maps the region annotations to an array of pixel values, acting as the primary
@@ -123,22 +93,19 @@ class AnnotationsConverter:
         Returns:
             np.ndarray: A 2D numpy array of shape (height, width) representing the mask.
         """
+
         # Set up the mask
         image_height, image_width, _ = self.image.shape
         mask = np.zeros((image_height, image_width), dtype=np.uint8)
 
-        # Get the largest membrane and set it at the begining if the method is set to ambiguous, if not
-        # just use the labels as they are ordered
-        image_annotatations = self.prioritize_largest_membrane() if method == "ambiguous" else self.image_annotations
-
-        for index, image_annotatation in enumerate(image_annotatations):
+        for index, image_annotation in enumerate(self.image_annotations):
             # Get label as well as label class value
             # example label=bacteria , label_value=2
-            label = image_annotatation["label"]
+            label = image_annotation["label"]
             label_value = self.label_dictionary[label]
 
             # Fetch the polygon points [(x1, y1), (x2, y2), (x3, y3)...] and structure it for opencv
-            points = image_annotatation["points"]
+            points = image_annotation["points"]
             polygon_points = np.array(points).reshape((-1, 1, 2))
 
             # Fill the mask based on label dictionary set by user
