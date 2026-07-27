@@ -5,13 +5,8 @@ import math
 from typing import Tuple, Dict
 
 
-def create_circle_data(
-        quadrant_width: int,
-        quadrant_height: int,
-        left_logit: float,
-        right_logit: float,
-        inactive_logit: float = -10.0
-) -> Tuple[np.ndarray, np.ndarray]:
+def create_circle_data(quadrant_width: int, quadrant_height: int, left_logit: float, right_logit: float,
+                       inactive_logit: float = -10.0) -> Tuple[np.ndarray, np.ndarray]:
     """
     Generates ground truth and prediction logits for a circle.
     
@@ -41,13 +36,8 @@ def create_circle_data(
     return ground_truth_numpy_array, prediction_logits
 
 
-def create_square_data(
-        quadrant_width: int,
-        quadrant_height: int,
-        left_logit: float,
-        right_logit: float,
-        inactive_logit: float = -10.0
-) -> Tuple[np.ndarray, np.ndarray]:
+def create_square_data(quadrant_width: int, quadrant_height: int, left_logit: float,
+                       right_logit: float, inactive_logit: float = -10.0) -> Tuple[np.ndarray, np.ndarray]:
     """
     Generates ground truth and prediction logits for a square.
     
@@ -80,13 +70,8 @@ def create_square_data(
     return ground_truth_numpy_array, prediction_logits
 
 
-def create_pentagon_data(
-        quadrant_width: int,
-        quadrant_height: int,
-        left_logit: float,
-        right_logit: float,
-        inactive_logit: float = -10.0
-) -> Tuple[np.ndarray, np.ndarray]:
+def create_pentagon_data(quadrant_width: int, quadrant_height: int, left_logit: float,
+                         right_logit: float, inactive_logit: float = -10.0) -> Tuple[np.ndarray, np.ndarray]:
     """
     Generates ground truth and prediction logits for a pentagon.
     
@@ -124,13 +109,8 @@ def create_pentagon_data(
     return ground_truth_numpy_array, prediction_logits
 
 
-def create_ellipse_data(
-        quadrant_width: int,
-        quadrant_height: int,
-        left_logit: float,
-        right_logit: float,
-        inactive_logit: float = -10.0
-) -> Tuple[np.ndarray, np.ndarray]:
+def create_ellipse_data(quadrant_width: int, quadrant_height: int, left_logit: float, right_logit: float,
+                        inactive_logit: float = -10.0) -> Tuple[np.ndarray, np.ndarray]:
     """
     Generates ground truth and prediction logits for an ellipse.
     
@@ -161,8 +141,7 @@ def create_ellipse_data(
     return ground_truth_numpy_array, prediction_logits
 
 
-def create_input_data(image_size: Tuple[int, int],
-                      background_logit: float,
+def create_input_data(image_size: Tuple[int, int], background_logit: float,
                       logit_dictionary: Dict[str, Dict[str, float]]) -> Tuple[torch.Tensor, torch.Tensor]:
     """
     Creates a 5-channel ground truth and prediction tensor for focal loss debugging.
@@ -206,7 +185,6 @@ def create_input_data(image_size: Tuple[int, int],
                                                                 circle_right, inactive_logit)
     print_non_zero_pixels(circle_ground_truth, "circle")
 
-
     ground_truth_tensor[0, 1, 0:quadrant_height, 0:quadrant_width] = torch.from_numpy(circle_ground_truth)
     prediction_tensor[0, 1, 0:quadrant_height, 0:quadrant_width] = torch.from_numpy(circle_prediction)
 
@@ -245,6 +223,7 @@ def create_input_data(image_size: Tuple[int, int],
     print_non_zero_pixels(ground_truth_tensor[0, 0, :, :].numpy(), "background")
 
     return ground_truth_tensor, prediction_tensor
+
 
 def print_non_zero_pixels(numpy_array: np.ndarray, name: str) -> None:
     """
