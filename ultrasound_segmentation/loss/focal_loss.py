@@ -1,20 +1,30 @@
-from math import gamma
-
-from typing import List
+from typing import List, Tuple
 
 import torch
 from torch import nn
-import cv2
-from utilities.tensor_utilities import print_tensor_status, print_tensor_list
 
 
 class FocalLoss(nn.Module):
     """
-
+    Computes the Focal Loss between the predicted logits and the one-hot encoded ground truth masks.
+    
+    This loss function is designed to address severe class imbalance by down-weighting the loss 
+    assigned to well-classified examples, thereby focusing the training on a sparse set of hard examples.
     """
 
     def __init__(self, alpha: List[float], gamma: float, device: torch.device, dtype: torch.dtype):
-        """"""
+        """
+        Initializes the FocalLoss class.
+        
+        Args:
+            alpha (List[float]): A list of weighting factors for each class to address class imbalance.
+            gamma (float): The focusing parameter to smoothly adjust the rate at which easy examples are down-weighted.
+            device (torch.device): The device (e.g., CPU or GPU) on which the tensors will be allocated.
+            dtype (torch.dtype): The expected data type for the internal tensors.
+            
+        Returns:
+            None
+        """
         super().__init__()
 
         self.device = device
@@ -27,8 +37,20 @@ class FocalLoss(nn.Module):
 
         self.gamma = torch.tensor(gamma, device=self.device, dtype=self.dtype)
 
-    def forward(self, model_predictions: torch.Tensor, ground_truths: torch.Tensor) -> torch.Tensor:
-        """"""
+    def forward(self, model_predictions: torch.Tensor,
+                ground_truths: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        """
+        Calculates the focal loss.
+        
+        Args:
+            model_predictions (torch.Tensor): The raw logit predictions from the model. 
+                Expected shape is (batch, number_classes, height, width).
+            ground_truths (torch.Tensor): The one-hot encoded ground truth masks.
+                Expected shape is (batch, number_classes, height, width).
+                
+        Returns:
+            tuple: A tuple containing the scalar mean focal loss and the focal loss image tensor.
+        """
 
         ground_truths = ground_truths.to(device=self.device)
         # print_tensor_status(model_predictions, "Model Predictions")
