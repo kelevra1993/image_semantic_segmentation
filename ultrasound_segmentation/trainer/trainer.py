@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Dict, Any, Optional, Tuple
 
 from utilities.os_utilities import load_configuration, print_red, print_green, print_blue, print_yellow
-from utilities.tensor_utilities import get_device, print_tensor_status, print_tensor_list
+from utilities.tensor_utilities import get_device, print_tensor_status, print_tensor_list, print_tensor_shape
 from ultrasound_segmentation.model.model import UnetModel
 from utilities.data_utilities.dataloader import get_dataloaders
 from torch.utils.data.dataloader import _BaseDataLoaderIter
@@ -38,7 +38,7 @@ class Trainer:
             model_configuration (Dict[str, Any]): Dictionary containing the model architecture parameters.
         """
         self.experiment_configuration = experiment_configuration
-        self.model_configuration = model_configuration
+        self.model_configuration = model_configuration["UnetConfiguration"]
 
         self.device = get_device()
         self.dtype = self.experiment_configuration["dtype"]
@@ -65,7 +65,7 @@ class Trainer:
         self.train_dataloader, self.validation_dataloader, self.test_dataloader = self.get_trainer_data_loaders()
 
         # Initialize Model (U-Net) and Optimizer
-        self.model = UnetModel(unet_configuration=self.model_configuration["UnetConfiguration"])
+        self.model = UnetModel(unet_configuration=self.model_configuration)
         self.model.to(device=self.device, dtype=self.dtype)
 
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.learning_rate)

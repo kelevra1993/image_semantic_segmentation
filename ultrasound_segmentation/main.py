@@ -1,4 +1,8 @@
+import os
+import sys
 from pathlib import Path
+
+sys.path.append(os.getcwd())
 from ultrasound_segmentation.trainer.trainer import Trainer
 from utilities.os_utilities import load_experiment_configuration, print_yellow
 

@@ -57,6 +57,12 @@ def print_tensor_type(tensor: torch.Tensor, name: Optional[str] = "") -> None:
     print_yellow(f"Tensor {name} Is Of Type : {tensor.dtype}")
 
 
+def print_tensor_min_max(tensor: torch.Tensor, name: Optional[str] = "") -> None:
+    """todo update docstring"""
+    print_yellow(f"Tensor {name} Maximum Is : {tensor.max()}")
+    print_yellow(f"Tensor {name} Minimum Is : {tensor.min()}")
+
+
 def print_tensor_device(tensor: torch.Tensor, name: Optional[str] = "") -> None:
     """
     Logs the hardware device of a tensor to the console in a formatted green string.
@@ -84,9 +90,12 @@ def print_tensor_status(tensor: torch.Tensor, name: Optional[str] = "") -> None:
         tensor (torch.Tensor): The torch.Tensor to inspect. Shape: (*).
         name (Optional[str], optional): An optional label to identify the tensor in the output.
     """
+    print_blue(60*'-')
     print_tensor_shape(tensor=tensor, name=name)
     print_tensor_type(tensor=tensor, name=name)
+    print_tensor_min_max(tensor=tensor,name=name)
     print_tensor_device(tensor=tensor, name=name)
+    print_blue(60*'-')
 
 
 def print_tensor_list(tensor: torch.Tensor, round: int = 4) -> None:
