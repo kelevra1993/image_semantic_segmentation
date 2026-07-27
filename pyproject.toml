@@ -8,6 +8,7 @@ dependencies = [
     "kagglehub>=1.0.2",
     "matplotlib>=3.11.1",
     "opencv-python>=5.0.0.93",
+    "plotly>=6.9.0",
     "shapely>=2.1.2",
     "tensorboard>=2.21.0",
     "torch>=2.13.0",

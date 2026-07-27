@@ -13,6 +13,7 @@ from tqdm import tqdm
 from pathlib import Path
 from typing import Dict, Any, Optional, Tuple
 
+from ultrasound_segmentation.loss.focal_loss import FocalLoss
 from utilities.os_utilities import load_configuration, print_red, print_green, print_blue, print_yellow
 from utilities.tensor_utilities import get_device, print_tensor_status, print_tensor_list, print_tensor_shape
 from ultrasound_segmentation.model.model import UnetModel
@@ -73,6 +74,10 @@ class Trainer:
         # TODO Will be modified
         # we will compute all losses but we will only optimise some
         self.criterion = BCELoss()
+        self.focal_loss = FocalLoss(alpha=self.experiment_configuration["alpha"],
+                                    gamma=self.experiment_configuration["gamma"],
+                                    device=self.device,
+                                    dtype=self.dtype)
 
         # Restoration logic
         self.start_iteration = 1
@@ -178,6 +183,50 @@ class Trainer:
                 continue
 
         return images, masks, dataloader_iterator
+
+    def run_benchmarking_loop(self, benchmarking_iterations: int = 1e5) -> None:
+        """
+        Todo document function
+        """
+
+        # Get dataloader
+        training_dataloader_iterator = iter(self.train_dataloader)
+        validation_dataloader_iterator = iter(self.validation_dataloader)
+
+        for training_iteration in tqdm(range(int(benchmarking_iterations)), desc="Benchmarking Loop"):
+
+            # Get next training elements
+            training_images, training_masks, training_dataloader_iterator = self.get_next_batch(
+                dataloader_iterator=training_dataloader_iterator, dataloader=self.train_dataloader)
+
+            self.model.train()
+            self.optimizer.zero_grad()
+
+            # Forward pass
+            training_loss, model_outputs = self.run_model_iteration(batch_images=training_images, batch_masks=training_masks,
+                                                        writer=self.training_writer, iteration=training_iteration,
+                                                        tracker_dictionary=None)
+
+            # TODO Still in progress
+            # Testing of the focal loss
+            self.focal_loss.forward(model_predictions=model_outputs, ground_truths=training_masks)
+
+            # Backward and Step
+            training_loss.backward()
+            self.optimizer.step()
+
+            # Validation phase
+            if self.compute_validation_iteration:
+                # Get next validation elements
+                validation_images, validation_masks, validation_dataloader_iterator = self.get_next_batch(
+                    dataloader_iterator=validation_dataloader_iterator, dataloader=self.validation_dataloader)
+
+                self.model.eval()
+                with torch.no_grad():
+                    _, _ = self.run_model_iteration(batch_images=validation_images, batch_masks=validation_masks,
+                                                    writer=self.validation_writer, iteration=training_iteration,
+                                                    tracker_dictionary=None)
+                    exit()
 
     def run_training_loop(self) -> None:
         """
