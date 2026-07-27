@@ -33,17 +33,17 @@ class AnnotationsConverter:
 
     def convert_image_annotations(self) -> List[Dict]:
         """
-        todo to be updated
         Extracts and converts the raw VGG Image Annotator (VIA) regions into a standardized format.
 
         This method acts as the initial parsing step for the JSON annotations. It searches the raw
         JSON data for entries matching the specified image file name, extracts the polygon coordinate 
         points, and associates them with their corresponding class labels (e.g., 'membrane', 'bacteria'). 
-        The resulting structured data is then used downstream for creating the segmentation masks.
+        The resulting structured data is sorted by polygon area in descending order and is then used
+        downstream for creating the segmentation masks.
 
         Returns:
             List[Dict]: A list of dictionaries, where each dictionary represents a labeled region 
-                containing a 'label' string and a 'points' list of (x, y) coordinate tuples.
+                containing a 'label' string, a 'points' list of (x, y) coordinate tuples, and its 'area'.
         """
         annotation_regions = None
 
@@ -76,19 +76,13 @@ class AnnotationsConverter:
 
     def get_mask(self) -> np.ndarray:
         """
-        # todo to be updated
         Generates a categorical 2D image mask from the parsed polygon annotations.
 
         This function maps the region annotations to an array of pixel values, acting as the primary
-        data preparation step before feeding images into the segmentation neural network. Based on the 
-        selected `method`, it handles overlapping polygons differently. The 'ambiguous' method prioritizes
-        the largest membrane to be drawn first, so smaller enclosed structures (like bacteria) are drawn 
-        on top, preventing them from being overwritten.
-
-        Args:
-            method (Literal["naive", "ambiguous"]): The strategy used to handle overlapping annotations. 
-                'naive' draws them in the order they appear, whereas 'ambiguous' re-orders them to draw 
-                the largest membrane first.
+        data preparation step before feeding images into the segmentation neural network. Because the 
+        annotations are ordered by area descending, larger structures (like membranes) are drawn first, 
+        so smaller enclosed structures (like bacteria) are drawn on top, preventing them from being 
+        overwritten.
 
         Returns:
             np.ndarray: A 2D numpy array of shape (height, width) representing the mask.
