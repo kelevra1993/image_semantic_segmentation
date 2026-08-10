@@ -237,7 +237,9 @@ def print_non_zero_pixels(numpy_array: np.ndarray, name: str) -> None:
     print(f"We Have {non_zero_count} Non Zero Pixels for {name}")
 
 
-def visualize_focal_loss(parameter_dictionary: Dict[str, Dict[str, float]], window_size: int, spacing_x: int, spacing_y: int, focal_loss_class_image: torch.Tensor, ground_truth_tensor: torch.Tensor, prediction_tensor: torch.Tensor) -> None:
+def visualize_focal_loss(parameter_dictionary: Dict[str, Dict[str, float]], window_size: int, spacing_x: int,
+                         spacing_y: int, focal_loss_class_image: torch.Tensor, ground_truth_tensor: torch.Tensor,
+                         prediction_tensor: torch.Tensor) -> None:
     """
     Visualizes the focal loss components using OpenCV windows.
 
