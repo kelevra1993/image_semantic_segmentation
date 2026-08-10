@@ -1,5 +1,5 @@
 import torchvision
-from ultrasound_segmentation.loss.bce_loss import BCELoss
+from app.loss.bce_loss import BCELoss
 import os
 import csv
 import time
@@ -13,10 +13,10 @@ from tqdm import tqdm
 from pathlib import Path
 from typing import Dict, Any, Optional, Tuple
 
-from ultrasound_segmentation.loss.focal_loss import FocalLoss
+from app.loss.focal_loss import FocalLoss
 from utilities.os_utilities import load_configuration, print_red, print_green, print_blue, print_yellow
 from utilities.tensor_utilities import get_device, print_tensor_status, print_tensor_list, print_tensor_shape
-from ultrasound_segmentation.model.model import UnetModel
+from app.model.model import UnetModel
 from utilities.data_utilities.dataloader import get_dataloaders
 from torch.utils.data.dataloader import _BaseDataLoaderIter
 
