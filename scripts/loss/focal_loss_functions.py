@@ -331,20 +331,22 @@ def compute_class_probabilities(parameter_dictionary: Dict[str, Dict[str, float]
             "left_probability": left_softmax[class_index].item(),
             "right_probability": right_softmax[class_index].item()
         }
-        
+
     return probabilities
 
 
-def print_class_probabilities(probabilities: Dict[str, Dict[str, float]]) -> None:
+def print_class_probabilities(probabilities: Dict[str, Dict[str, float]], length_separator: int = 50) -> None:
     """
     Prints the computed probabilities for the left and right sides of each class.
 
     Args:
         probabilities (Dict[str, Dict[str, float]]): The dictionary of class probabilities.
+        length_separator (int): The number of characters to use for the visual separator. Defaults to 50.
     """
-    print(50 * "#")
+    print(length_separator * "#")
     print_yellow("----Class Probabilities----")
-    for predicted_class, probs in probabilities.items():
-        print(f" Softmax For {predicted_class.upper()} :: "
-              f"Left: {probs['left_probability']:.3f}, Right: {probs['right_probability']:.3f}")
-    print(50 * "#")
+    for predicted_class, probability_information in probabilities.items():
+        print(f"Softmax For {predicted_class.upper()}: \n"
+              f" - Left Part : {probability_information['left_probability']:.3f}\n"
+              f" - Right Part: {probability_information['right_probability']:.3f}")
+    print(length_separator * "#")

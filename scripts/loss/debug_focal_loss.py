@@ -19,7 +19,8 @@ def debug_focal_loss(parameter_dictionary: Dict[str, Dict[str, float]],
                      batch_size: int,
                      window_size: int,
                      spacing_x: int,
-                     spacing_y: int) -> None:
+                     spacing_y: int,
+                     length_separator: int) -> None:
     """
     Creates a 5-class synthetic testing scenario to visually verify the focal loss implementation.
 
@@ -38,8 +39,9 @@ def debug_focal_loss(parameter_dictionary: Dict[str, Dict[str, float]],
         window_size (int): The display width and height for each OpenCV window.
         spacing_x (int): Horizontal spacing between windows in pixels.
         spacing_y (int): Vertical spacing between windows in pixels.
+        length_separator (int): The number of characters to use for the visual separator.
     """
-    # Generate Data
+    # Generate Data containing our object divided into two regions.
     ground_truth_tensor, prediction_tensor = create_input_data(image_size=image_size,
                                                                background_logit=background_logit,
                                                                logit_dictionary=parameter_dictionary,
@@ -70,7 +72,7 @@ def debug_focal_loss(parameter_dictionary: Dict[str, Dict[str, float]],
                                                 inactive_logit=inactive_logit)
 
     # Print predictions softmaxes
-    print_class_probabilities(probabilities=probabilities)
+    print_class_probabilities(probabilities=probabilities, length_separator=length_separator)
 
     # Get visualization Of Focal Loss
     visualize_focal_loss(parameter_dictionary=parameter_dictionary,
@@ -85,9 +87,9 @@ if __name__ == "__main__":
         "circle": {"left_logit": 2.8, "right_logit": 1.0, "alpha": 1.0},
         "square": {"left_logit": 2.8, "right_logit": 1.0, "alpha": 1.0},
         "pentagon": {"left_logit": 1.0, "right_logit": 5.0, "alpha": 1.0},
-        "ellipse": {"left_logit": 2.8, "right_logit": 1.0, "alpha": 1.0}
-    }
+        "ellipse": {"left_logit": 2.8, "right_logit": 1.0, "alpha": 1.0}    }
 
+    # Definition of visualizers
     test_image_size = (400, 400)
     test_background_logit = 0.0
     test_inactive_logit = -20.0
@@ -96,9 +98,11 @@ if __name__ == "__main__":
     test_window_size = 400
     test_spacing_x = 80
     test_spacing_y = 60
+    test_length_separator = 50
 
     debug_focal_loss(parameter_dictionary=test_parameter_dictionary,
                      image_size=test_image_size,
                      background_logit=test_background_logit, inactive_logit=test_inactive_logit,
                      number_classes=test_number_classes, batch_size=test_batch_size,
-                     window_size=test_window_size, spacing_x=test_spacing_x, spacing_y=test_spacing_y)
+                     window_size=test_window_size, spacing_x=test_spacing_x, spacing_y=test_spacing_y,
+                     length_separator=test_length_separator)
