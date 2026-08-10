@@ -33,7 +33,7 @@ def debug_focal_loss(parameter_dictionary: Dict[str, Dict[str, float]],
         number_classes (int): Total number of output classes.
         batch_size (int): The batch size of the generated tensors.
     """
-    # 2. Generate Data
+    # Generate Data
     ground_truth_tensor, prediction_tensor = create_input_data(image_size=image_size,
                                                                background_logit=background_logit,
                                                                logit_dictionary=parameter_dictionary,
@@ -41,7 +41,7 @@ def debug_focal_loss(parameter_dictionary: Dict[str, Dict[str, float]],
                                                                number_of_classes=number_classes,
                                                                batch_size=batch_size)
 
-    # 3. Initialize FocalLoss
+    # Initialize FocalLoss
     device = torch.device('cpu')
 
     focal_loss = FocalLoss(alpha=[1.0,
@@ -51,7 +51,7 @@ def debug_focal_loss(parameter_dictionary: Dict[str, Dict[str, float]],
                                   parameter_dictionary["ellipse"]["alpha"]],
                            gamma=0.50, device=device, dtype=torch.float32)
 
-    # 4. Compute Loss
+    # Compute Loss
     loss, focal_loss_image = focal_loss(prediction_tensor, ground_truth_tensor)
 
     # Globally min-max normalize the image
@@ -88,7 +88,20 @@ if __name__ == "__main__":
         "circle": {"left_logit": 2.8, "right_logit": 1.0, "alpha": 1.0},
         "square": {"left_logit": 2.8, "right_logit": 1.0, "alpha": 1.0},
         "pentagon": {"left_logit": 1.0, "right_logit": 5.0, "alpha": 1.0},
-        "ellipse": {"left_logit": 2.8, "right_logit": 1.0, "alpha": 1.0}}
+        "ellipse": {"left_logit": 2.8, "right_logit": 1.0, "alpha": 1.0}
+    }
+    
+    test_image_size = (400, 400)
+    test_background_logit = 0.0
+    test_inactive_logit = -20.0
+    test_number_classes = 5
+    test_batch_size = 1
 
-    debug_focal_loss(parameter_dictionary=test_parameter_dictionary,
-                     image_size=(400, 400), background_logit=0.0, inactive_logit=-20.0, number_classes=5, batch_size=1)
+    debug_focal_loss(
+        parameter_dictionary=test_parameter_dictionary,
+        image_size=test_image_size,
+        background_logit=test_background_logit,
+        inactive_logit=test_inactive_logit,
+        number_classes=test_number_classes,
+        batch_size=test_batch_size
+    )
