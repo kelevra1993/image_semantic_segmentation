@@ -63,7 +63,15 @@ def debug_focal_loss() -> None:
     spacing_x = 80
     spacing_y = 60  # larger y spacing to account for OS window title bars
 
-    visualize_focal_loss(parameter_dictionary, window_size, spacing_x, spacing_y, focal_loss_class_image, ground_truth_tensor, prediction_tensor)
+    visualize_focal_loss(
+        parameter_dictionary=parameter_dictionary,
+        window_size=window_size,
+        spacing_x=spacing_x,
+        spacing_y=spacing_y,
+        focal_loss_class_image=focal_loss_class_image,
+        ground_truth_tensor=ground_truth_tensor,
+        prediction_tensor=prediction_tensor
+    )
 
 if __name__ == "__main__":
     debug_focal_loss()
