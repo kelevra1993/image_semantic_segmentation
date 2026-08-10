@@ -260,9 +260,9 @@ def visualize_focal_loss(parameter_dictionary: Dict[str, Dict[str, float]], wind
         index_model_predictions = torch.sigmoid(prediction_tensor[0, index])
 
         # Calculate X and Y positions
-        col_0_x = spacing_x
-        col_1_x = col_0_x + window_size + spacing_x
-        col_2_x = col_1_x + window_size + spacing_x
+        column_0_x = spacing_x
+        column_1_x = column_0_x + window_size + spacing_x
+        column_2_x = column_1_x + window_size + spacing_x
         row_y = spacing_y + (index - 1) * (window_size + spacing_y)
 
         # 1. Model Prediction Window
@@ -270,20 +270,20 @@ def visualize_focal_loss(parameter_dictionary: Dict[str, Dict[str, float]], wind
         cv2.namedWindow(prediction_name, cv2.WINDOW_NORMAL)
         cv2.resizeWindow(prediction_name, window_size, window_size)
         cv2.imshow(prediction_name, index_model_predictions.detach().cpu().numpy())
-        cv2.moveWindow(prediction_name, col_1_x, row_y)
+        cv2.moveWindow(prediction_name, column_1_x, row_y)
 
         # 2. Ground Truth Window
         ground_truth_name = f"Ground Truth - {object_class}"
         cv2.namedWindow(ground_truth_name, cv2.WINDOW_NORMAL)
         cv2.resizeWindow(ground_truth_name, window_size, window_size)
         cv2.imshow(ground_truth_name, ground_truth_tensor[0, index].detach().cpu().numpy())
-        cv2.moveWindow(ground_truth_name, col_0_x, row_y)
+        cv2.moveWindow(ground_truth_name, column_0_x, row_y)
 
         # 3. Focal Loss Window
         focal_loss_name = f"Focal Loss - {object_class}"
         cv2.namedWindow(focal_loss_name, cv2.WINDOW_NORMAL)
         cv2.resizeWindow(focal_loss_name, window_size, window_size)
         cv2.imshow(focal_loss_name, focal_loss_class_image.detach().cpu().numpy())
-        cv2.moveWindow(focal_loss_name, col_2_x, row_y)
+        cv2.moveWindow(focal_loss_name, column_2_x, row_y)
 
     cv2.waitKey(0)
