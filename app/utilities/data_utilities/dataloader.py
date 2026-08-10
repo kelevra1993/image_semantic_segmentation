@@ -5,7 +5,7 @@ import numpy as np
 from pathlib import Path
 from typing import Tuple, Dict, Any
 from torch.utils.data import Dataset, DataLoader
-from utilities.os_utilities import read_json
+from app.utilities.os_utilities import read_json
 
 
 class UltrasoundDataset(Dataset):

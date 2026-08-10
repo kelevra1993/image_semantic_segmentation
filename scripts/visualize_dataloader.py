@@ -3,8 +3,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from pathlib import Path
 
-from utilities.os_utilities import load_experiment_configuration
-from utilities.data_utilities.dataloader import get_dataloaders
+from app.utilities.os_utilities import load_experiment_configuration
+from app.utilities.data_utilities.dataloader import get_dataloaders
 
 
 def main():

@@ -7,8 +7,8 @@ import kagglehub
 import numpy as np
 from tqdm import tqdm
 
-from utilities.os_utilities import make_directory, get_images, save_json
-from utilities.data_utilities.data_utilities import preprocess
+from app.utilities.os_utilities import make_directory, get_images, save_json
+from app.utilities.data_utilities.data_utilities import preprocess
 from shutil import rmtree, move
 
 

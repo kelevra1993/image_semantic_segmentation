@@ -14,10 +14,10 @@ from pathlib import Path
 from typing import Dict, Any, Optional, Tuple
 
 from app.loss.focal_loss import FocalLoss
-from utilities.os_utilities import load_configuration, print_red, print_green, print_blue, print_yellow
-from utilities.tensor_utilities import get_device, print_tensor_status, print_tensor_list, print_tensor_shape
+from app.utilities.os_utilities import load_configuration, print_red, print_green, print_blue, print_yellow
+from app.utilities.tensor_utilities import get_device, print_tensor_status, print_tensor_list, print_tensor_shape
 from app.model.model import UnetModel
-from utilities.data_utilities.dataloader import get_dataloaders
+from app.utilities.data_utilities.dataloader import get_dataloaders
 from torch.utils.data.dataloader import _BaseDataLoaderIter
 
 from torch.utils.data import DataLoader

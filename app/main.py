@@ -4,7 +4,7 @@ from pathlib import Path
 
 sys.path.append(os.getcwd())
 from app.trainer.trainer import Trainer
-from utilities.os_utilities import load_experiment_configuration, print_yellow
+from app.utilities.os_utilities import load_experiment_configuration, print_yellow
 
 
 def main() -> None:

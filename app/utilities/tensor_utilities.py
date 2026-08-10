@@ -3,7 +3,7 @@ import numpy as np
 from typing import Optional, Any
 
 from torch import nn
-from utilities.os_utilities import print_blue, print_yellow, print_green
+from app.utilities.os_utilities import print_blue, print_yellow, print_green
 
 
 def get_device() -> torch.device:

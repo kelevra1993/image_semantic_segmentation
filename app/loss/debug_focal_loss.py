@@ -2,8 +2,8 @@ import cv2
 import torch
 from app.loss.focal_loss import FocalLoss
 from app.loss.focal_loss_functions import create_input_data
-from utilities.os_utilities import print_yellow
-from utilities.tensor_utilities import print_tensor_status
+from app.utilities.os_utilities import print_yellow
+from app.utilities.tensor_utilities import print_tensor_status
 
 
 def debug_focal_loss() -> None:
