@@ -3,9 +3,10 @@ import cv2
 import json
 import random
 import kagglehub
-
 import numpy as np
+
 from tqdm import tqdm
+from pathlib import Path
 
 from app.utilities.os_utilities import make_directory, get_images, save_json
 from app.utilities.data_utilities.data_utilities import preprocess
@@ -284,15 +285,26 @@ class DatasetRetriever:
             print(f"We Saved {len(data_split)} Elements In file://{file_path}")
 
 
-parent_directory = os.path.dirname(os.getcwd())
-dataset_directory = os.path.join(parent_directory, "ultrasound_dataset")
+# Download data under "data" folder at the project root.
+project_directory = Path(__file__).parents[3]
+dataset_directory = project_directory / "data"
 
-dataset_retriever = DatasetRetriever(dataset_directory=dataset_directory,
+# Settings for the dataset :
+# Here the image size is set to 512 which is how the data will be preprocessed and prepared for training
+dataset_retriever = DatasetRetriever(dataset_directory=str(dataset_directory),
                                      image_size=512,
                                      keep_aspect_ratio=True)
 
+# Download dataset for kaggle dataset hub
 dataset_retriever.download_dataset()
+
+# Remove un-necessary folder and preprocess data by resizing images
 dataset_retriever.clean_dataset()
 dataset_retriever.preprocess_dataset()
+
+# Generate additional mask dummy data such as letter B, a plus sign and a square
+# This is done so that we can have a dataset with multiple different labels per image.
 dataset_retriever.generate_dummy_masks()
+
+# Create training and validation split for our data.
 dataset_retriever.create_train_validation_test_split()
