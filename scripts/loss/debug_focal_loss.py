@@ -3,7 +3,7 @@ import os
 import torch
 from typing import Dict, Tuple
 from app.loss.focal_loss import FocalLoss
-from scripts.loss.focal_loss_functions import create_input_data, visualize_focal_loss, compute_class_probabilities
+from scripts.loss.focal_loss_functions import create_input_data, visualize_focal_loss, compute_class_probabilities, print_class_probabilities
 from app.utilities.os_utilities import print_yellow
 from app.utilities.tensor_utilities import print_tensor_status
 
@@ -69,12 +69,8 @@ def debug_focal_loss(parameter_dictionary: Dict[str, Dict[str, float]],
                                                 background_logit=background_logit,
                                                 inactive_logit=inactive_logit)
 
-    print(50 * "#")
-    print_yellow("----Class Probabilities----")
-    for predicted_class, probs in probabilities.items():
-        print(f" Softmax For {predicted_class.upper()} :: "
-              f"Left: {probs['left_probability']:.3f}, Right: {probs['right_probability']:.3f}")
-    print(50 * "#")
+    # Print predictions softmaxes
+    print_class_probabilities(probabilities=probabilities)
 
     # Get visualization Of Focal Loss
     visualize_focal_loss(parameter_dictionary=parameter_dictionary,
@@ -91,7 +87,7 @@ if __name__ == "__main__":
         "pentagon": {"left_logit": 1.0, "right_logit": 5.0, "alpha": 1.0},
         "ellipse": {"left_logit": 2.8, "right_logit": 1.0, "alpha": 1.0}
     }
-    
+
     test_image_size = (400, 400)
     test_background_logit = 0.0
     test_inactive_logit = -20.0
@@ -101,14 +97,8 @@ if __name__ == "__main__":
     test_spacing_x = 80
     test_spacing_y = 60
 
-    debug_focal_loss(
-        parameter_dictionary=test_parameter_dictionary,
-        image_size=test_image_size,
-        background_logit=test_background_logit,
-        inactive_logit=test_inactive_logit,
-        number_classes=test_number_classes,
-        batch_size=test_batch_size,
-        window_size=test_window_size,
-        spacing_x=test_spacing_x,
-        spacing_y=test_spacing_y
-    )
+    debug_focal_loss(parameter_dictionary=test_parameter_dictionary,
+                     image_size=test_image_size,
+                     background_logit=test_background_logit, inactive_logit=test_inactive_logit,
+                     number_classes=test_number_classes, batch_size=test_batch_size,
+                     window_size=test_window_size, spacing_x=test_spacing_x, spacing_y=test_spacing_y)

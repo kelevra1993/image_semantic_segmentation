@@ -3,6 +3,7 @@ import cv2
 import numpy as np
 import math
 from typing import Tuple, Dict
+from app.utilities.os_utilities import print_yellow
 
 
 def create_circle_data(quadrant_width: int, quadrant_height: int, left_logit: float, right_logit: float,
@@ -290,7 +291,8 @@ def visualize_focal_loss(parameter_dictionary: Dict[str, Dict[str, float]], wind
     cv2.waitKey(0)
 
 
-def compute_class_probabilities(parameter_dictionary: Dict[str, Dict[str, float]], background_logit: float, inactive_logit: float = -20.0) -> Dict[str, Dict[str, float]]:
+def compute_class_probabilities(parameter_dictionary: Dict[str, Dict[str, float]], background_logit: float,
+                                inactive_logit: float = -20.0) -> Dict[str, Dict[str, float]]:
     """
     Computes the softmax probability for the left and right regions of each foreground class.
 
@@ -310,24 +312,39 @@ def compute_class_probabilities(parameter_dictionary: Dict[str, Dict[str, float]
     """
     probabilities = {}
     number_of_foreground_classes = len(parameter_dictionary)
-    
+
     for object_class, info in parameter_dictionary.items():
         # Initialize logits with background and inactive foregrounds
         left_logits = [background_logit] + [inactive_logit] * number_of_foreground_classes
         right_logits = [background_logit] + [inactive_logit] * number_of_foreground_classes
-        
+
         # Find index of this class (1-based because 0 is background)
         class_index = list(parameter_dictionary.keys()).index(object_class) + 1
-        
+
         left_logits[class_index] = info["left_logit"]
         right_logits[class_index] = info["right_logit"]
-        
+
         left_softmax = torch.softmax(torch.tensor(data=left_logits), dim=0)
         right_softmax = torch.softmax(torch.tensor(data=right_logits), dim=0)
-        
+
         probabilities[object_class] = {
             "left_probability": left_softmax[class_index].item(),
             "right_probability": right_softmax[class_index].item()
         }
         
     return probabilities
+
+
+def print_class_probabilities(probabilities: Dict[str, Dict[str, float]]) -> None:
+    """
+    Prints the computed probabilities for the left and right sides of each class.
+
+    Args:
+        probabilities (Dict[str, Dict[str, float]]): The dictionary of class probabilities.
+    """
+    print(50 * "#")
+    print_yellow("----Class Probabilities----")
+    for predicted_class, probs in probabilities.items():
+        print(f" Softmax For {predicted_class.upper()} :: "
+              f"Left: {probs['left_probability']:.3f}, Right: {probs['right_probability']:.3f}")
+    print(50 * "#")
