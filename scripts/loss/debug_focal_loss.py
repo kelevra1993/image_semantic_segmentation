@@ -3,7 +3,11 @@ import os
 import torch
 from typing import Dict, Tuple
 from app.loss.focal_loss import FocalLoss
-from scripts.loss.focal_loss_functions import create_input_data, visualize_focal_loss, compute_class_probabilities, print_class_probabilities
+from scripts.loss.focal_loss_functions import (create_input_data,
+                                               visualize_focal_loss,
+                                               compute_class_probabilities,
+                                               print_class_probabilities,
+                                               create_focal_loss_dataframe)
 from app.utilities.os_utilities import print_yellow
 from app.utilities.tensor_utilities import print_tensor_status
 
@@ -42,12 +46,12 @@ def debug_focal_loss(parameter_dictionary: Dict[str, Dict[str, float]],
         length_separator (int): The number of characters to use for the visual separator.
     """
     # Generate Data containing our object divided into two regions.
-    ground_truth_tensor, prediction_tensor = create_input_data(image_size=image_size,
-                                                               background_logit=background_logit,
-                                                               logit_dictionary=parameter_dictionary,
-                                                               inactive_logit=inactive_logit,
-                                                               number_of_classes=number_classes,
-                                                               batch_size=batch_size)
+    ground_truth_tensor, prediction_tensor, positions = create_input_data(image_size=image_size,
+                                                                          background_logit=background_logit,
+                                                                          logit_dictionary=parameter_dictionary,
+                                                                          inactive_logit=inactive_logit,
+                                                                          number_of_classes=number_classes,
+                                                                          batch_size=batch_size)
 
     # Initialize FocalLoss
     device = torch.device('cpu')
@@ -71,8 +75,12 @@ def debug_focal_loss(parameter_dictionary: Dict[str, Dict[str, float]],
                                                 background_logit=background_logit,
                                                 inactive_logit=inactive_logit)
 
-    # Print predictions softmaxes
-    print_class_probabilities(probabilities=probabilities, length_separator=length_separator)
+    # Generate and print dataframe
+    focal_loss_dataframe = create_focal_loss_dataframe(probabilities=probabilities,
+                                                       focal_loss_image=focal_loss_image,
+                                                       positions=positions)
+
+    print(focal_loss_dataframe.to_string())
 
     # Get visualization Of Focal Loss
     visualize_focal_loss(parameter_dictionary=parameter_dictionary,
@@ -87,7 +95,7 @@ if __name__ == "__main__":
         "circle": {"left_logit": 2.8, "right_logit": 1.0, "alpha": 1.0},
         "square": {"left_logit": 2.8, "right_logit": 1.0, "alpha": 1.0},
         "pentagon": {"left_logit": 1.0, "right_logit": 5.0, "alpha": 1.0},
-        "ellipse": {"left_logit": 2.8, "right_logit": 1.0, "alpha": 1.0}    }
+        "ellipse": {"left_logit": 2.8, "right_logit": 1.0, "alpha": 1.0}}
 
     # Definition of visualizers
     test_image_size = (400, 400)
@@ -100,6 +108,7 @@ if __name__ == "__main__":
     test_spacing_y = 60
     test_length_separator = 50
 
+    # Run focal loss debugger and visualizer
     debug_focal_loss(parameter_dictionary=test_parameter_dictionary,
                      image_size=test_image_size,
                      background_logit=test_background_logit, inactive_logit=test_inactive_logit,
