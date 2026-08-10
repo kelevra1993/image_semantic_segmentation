@@ -142,7 +142,8 @@ def create_ellipse_data(quadrant_width: int, quadrant_height: int, left_logit: f
 
 
 def create_input_data(image_size: Tuple[int, int], background_logit: float,
-                      logit_dictionary: Dict[str, Dict[str, float]]) -> Tuple[torch.Tensor, torch.Tensor]:
+                      logit_dictionary: Dict[str, Dict[str, float]], inactive_logit: float = -20.0,
+                      number_of_classes: int = 5, batch_size: int = 1) -> Tuple[torch.Tensor, torch.Tensor]:
     """
     Creates a 5-channel ground truth and prediction tensor for focal loss debugging.
     
@@ -159,17 +160,17 @@ def create_input_data(image_size: Tuple[int, int], background_logit: float,
         logit_dictionary (Dict[str, Dict[str, float]]): A dictionary specifying the prediction logits 
             for each foreground class. Must include nested dicts for 'circle', 'square', 'pentagon', 
             and 'ellipse' with 'left_logit' and 'right_logit' specified.
+        inactive_logit (float): Logit value for pixels not belonging to a class. Defaults to -20.0.
+        number_of_classes (int): Total number of output classes. Defaults to 5.
+        batch_size (int): The batch size of the generated tensors. Defaults to 1.
             
     Returns:
         Tuple[torch.Tensor, torch.Tensor]: The ground truth tensor and the prediction tensor, 
-            both of shape (1, 5, height, width).
+            both of shape (batch_size, number_of_classes, height, width).
     """
 
     image_height, image_width = image_size
     quadrant_height, quadrant_width = image_height // 2, image_width // 2
-    number_of_classes = 5
-    batch_size = 1
-    inactive_logit = -20.0
 
     ground_truth_tensor = torch.zeros((batch_size, number_of_classes, image_height, image_width), dtype=torch.float32)
     prediction_tensor = torch.full((batch_size, number_of_classes, image_height, image_width), inactive_logit,
@@ -287,3 +288,46 @@ def visualize_focal_loss(parameter_dictionary: Dict[str, Dict[str, float]], wind
         cv2.moveWindow(focal_loss_name, column_2_x, row_y)
 
     cv2.waitKey(0)
+
+
+def compute_class_probabilities(parameter_dictionary: Dict[str, Dict[str, float]], background_logit: float, inactive_logit: float = -20.0) -> Dict[str, Dict[str, float]]:
+    """
+    Computes the softmax probability for the left and right regions of each foreground class.
+
+    This function calculates the exact probability of each class by considering the active 
+    logit for the foreground class, the background logit, and the inactive logits for the 
+    other classes. This gives an accurate representation of what the model predicts at 
+    those specific pixel locations.
+
+    Args:
+        parameter_dictionary (Dict[str, Dict[str, float]]): The dictionary of class logits.
+        background_logit (float): The logit value assigned to the background class.
+        inactive_logit (float): The logit value assigned to inactive classes. Defaults to -20.0.
+
+    Returns:
+        Dict[str, Dict[str, float]]: A dictionary containing the left and right probabilities 
+            for each class.
+    """
+    probabilities = {}
+    number_of_foreground_classes = len(parameter_dictionary)
+    
+    for object_class, info in parameter_dictionary.items():
+        # Initialize logits with background and inactive foregrounds
+        left_logits = [background_logit] + [inactive_logit] * number_of_foreground_classes
+        right_logits = [background_logit] + [inactive_logit] * number_of_foreground_classes
+        
+        # Find index of this class (1-based because 0 is background)
+        class_index = list(parameter_dictionary.keys()).index(object_class) + 1
+        
+        left_logits[class_index] = info["left_logit"]
+        right_logits[class_index] = info["right_logit"]
+        
+        left_softmax = torch.softmax(torch.tensor(data=left_logits), dim=0)
+        right_softmax = torch.softmax(torch.tensor(data=right_logits), dim=0)
+        
+        probabilities[object_class] = {
+            "left_probability": left_softmax[class_index].item(),
+            "right_probability": right_softmax[class_index].item()
+        }
+        
+    return probabilities

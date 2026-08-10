@@ -1,8 +1,9 @@
 import cv2
 import os
 import torch
+from typing import Dict, Tuple
 from app.loss.focal_loss import FocalLoss
-from scripts.loss.focal_loss_functions import create_input_data, visualize_focal_loss
+from scripts.loss.focal_loss_functions import create_input_data, visualize_focal_loss, compute_class_probabilities
 from app.utilities.os_utilities import print_yellow
 from app.utilities.tensor_utilities import print_tensor_status
 
@@ -10,7 +11,12 @@ from app.utilities.tensor_utilities import print_tensor_status
 os.environ["QT_LOGGING_RULES"] = "*=false"
 
 
-def debug_focal_loss() -> None:
+def debug_focal_loss(parameter_dictionary: Dict[str, Dict[str, float]],
+                     image_size: Tuple[int, int],
+                     background_logit: float,
+                     inactive_logit: float,
+                     number_classes: int,
+                     batch_size: int) -> None:
     """
     Creates a 5-class synthetic testing scenario to visually verify the focal loss implementation.
 
@@ -18,18 +24,22 @@ def debug_focal_loss() -> None:
     a full 5-channel image containing a circle, square, pentagon, and ellipse in each quadrant.
     It passes the generated tensors to the FocalLoss module to review behavior under different
     logit configurations.
+    
+    Args:
+        parameter_dictionary (Dict[str, Dict[str, float]]): The dictionary of class logits.
+        image_size (Tuple[int, int]): The total (height, width) of the image.
+        background_logit (float): The default prediction logit for the background class.
+        inactive_logit (float): Logit value for pixels not belonging to a class.
+        number_classes (int): Total number of output classes.
+        batch_size (int): The batch size of the generated tensors.
     """
-    # 1. Define Logits Dictionary
-    parameter_dictionary = {
-        "circle": {"left_logit": 2.8, "right_logit": 1.0, "alpha": 1.0},
-        "square": {"left_logit": 2.8, "right_logit": 1.0, "alpha": 1.0},
-        "pentagon": {"left_logit": 1.0, "right_logit": 5.0, "alpha": 1.0},
-        "ellipse": {"left_logit": 2.8, "right_logit": 1.0, "alpha": 1.0}}
-
     # 2. Generate Data
-    image_size = (400, 400)
-    ground_truth_tensor, prediction_tensor = create_input_data(
-        image_size=image_size, background_logit=0.0, logit_dictionary=parameter_dictionary)
+    ground_truth_tensor, prediction_tensor = create_input_data(image_size=image_size,
+                                                               background_logit=background_logit,
+                                                               logit_dictionary=parameter_dictionary,
+                                                               inactive_logit=inactive_logit,
+                                                               number_of_classes=number_classes,
+                                                               batch_size=batch_size)
 
     # 3. Initialize FocalLoss
     device = torch.device('cpu')
@@ -49,29 +59,36 @@ def debug_focal_loss() -> None:
     focal_loss_class_image = (focal_loss_image[0] - focal_min) / (focal_max - focal_min + 1e-8)
 
     # Compute predictions softmaxes
-    print(50*"#")
-    print_yellow("----Class Probabilities----")
-    for predicted_class, predicted_information in parameter_dictionary.items():
-        softmax = torch.softmax(
-            torch.tensor(data=[predicted_information["left_logit"], predicted_information["right_logit"]]),dim=0)
-        print(f" Softmax For {predicted_class.upper()} :: {softmax.numpy().round(3)}")
-    print(50 * "#")
+    probabilities = compute_class_probabilities(parameter_dictionary=parameter_dictionary,
+                                                background_logit=background_logit,
+                                                inactive_logit=inactive_logit)
 
+    print(50 * "#")
+    print_yellow("----Class Probabilities----")
+    for predicted_class, probs in probabilities.items():
+        print(f" Softmax For {predicted_class.upper()} :: "
+              f"Left: {probs['left_probability']:.3f}, Right: {probs['right_probability']:.3f}")
+    print(50 * "#")
 
     # Define grid properties (using scaled down windows to fit on a normal screen)
     window_size = 400
     spacing_x = 80
     spacing_y = 60  # larger y spacing to account for OS window title bars
 
-    visualize_focal_loss(
-        parameter_dictionary=parameter_dictionary,
-        window_size=window_size,
-        spacing_x=spacing_x,
-        spacing_y=spacing_y,
-        focal_loss_class_image=focal_loss_class_image,
-        ground_truth_tensor=ground_truth_tensor,
-        prediction_tensor=prediction_tensor
-    )
+    # Get visualization Of Focal Loss
+    visualize_focal_loss(parameter_dictionary=parameter_dictionary,
+                         window_size=window_size, spacing_x=spacing_x, spacing_y=spacing_y,
+                         focal_loss_class_image=focal_loss_class_image,
+                         ground_truth_tensor=ground_truth_tensor, prediction_tensor=prediction_tensor)
+
 
 if __name__ == "__main__":
-    debug_focal_loss()
+    # Definition of logits for left and right part of our masked objects.
+    test_parameter_dictionary = {
+        "circle": {"left_logit": 2.8, "right_logit": 1.0, "alpha": 1.0},
+        "square": {"left_logit": 2.8, "right_logit": 1.0, "alpha": 1.0},
+        "pentagon": {"left_logit": 1.0, "right_logit": 5.0, "alpha": 1.0},
+        "ellipse": {"left_logit": 2.8, "right_logit": 1.0, "alpha": 1.0}}
+
+    debug_focal_loss(parameter_dictionary=test_parameter_dictionary,
+                     image_size=(400, 400), background_logit=0.0, inactive_logit=-20.0, number_classes=5, batch_size=1)
