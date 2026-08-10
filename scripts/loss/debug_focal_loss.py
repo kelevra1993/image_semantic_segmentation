@@ -16,7 +16,10 @@ def debug_focal_loss(parameter_dictionary: Dict[str, Dict[str, float]],
                      background_logit: float,
                      inactive_logit: float,
                      number_classes: int,
-                     batch_size: int) -> None:
+                     batch_size: int,
+                     window_size: int,
+                     spacing_x: int,
+                     spacing_y: int) -> None:
     """
     Creates a 5-class synthetic testing scenario to visually verify the focal loss implementation.
 
@@ -32,6 +35,9 @@ def debug_focal_loss(parameter_dictionary: Dict[str, Dict[str, float]],
         inactive_logit (float): Logit value for pixels not belonging to a class.
         number_classes (int): Total number of output classes.
         batch_size (int): The batch size of the generated tensors.
+        window_size (int): The display width and height for each OpenCV window.
+        spacing_x (int): Horizontal spacing between windows in pixels.
+        spacing_y (int): Vertical spacing between windows in pixels.
     """
     # Generate Data
     ground_truth_tensor, prediction_tensor = create_input_data(image_size=image_size,
@@ -70,11 +76,6 @@ def debug_focal_loss(parameter_dictionary: Dict[str, Dict[str, float]],
               f"Left: {probs['left_probability']:.3f}, Right: {probs['right_probability']:.3f}")
     print(50 * "#")
 
-    # Define grid properties (using scaled down windows to fit on a normal screen)
-    window_size = 400
-    spacing_x = 80
-    spacing_y = 60  # larger y spacing to account for OS window title bars
-
     # Get visualization Of Focal Loss
     visualize_focal_loss(parameter_dictionary=parameter_dictionary,
                          window_size=window_size, spacing_x=spacing_x, spacing_y=spacing_y,
@@ -96,6 +97,9 @@ if __name__ == "__main__":
     test_inactive_logit = -20.0
     test_number_classes = 5
     test_batch_size = 1
+    test_window_size = 400
+    test_spacing_x = 80
+    test_spacing_y = 60
 
     debug_focal_loss(
         parameter_dictionary=test_parameter_dictionary,
@@ -103,5 +107,8 @@ if __name__ == "__main__":
         background_logit=test_background_logit,
         inactive_logit=test_inactive_logit,
         number_classes=test_number_classes,
-        batch_size=test_batch_size
+        batch_size=test_batch_size,
+        window_size=test_window_size,
+        spacing_x=test_spacing_x,
+        spacing_y=test_spacing_y
     )
