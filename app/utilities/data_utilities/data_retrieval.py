@@ -285,9 +285,9 @@ class DatasetRetriever:
             print(f"We Saved {len(data_split)} Elements In file://{file_path}")
 
 
-# Download data under "data" folder at the project root.
+# Download data under "ultrasound_dataset" folder at the project root.
 project_directory = Path(__file__).parents[3]
-dataset_directory = project_directory / "data"
+dataset_directory = project_directory / "ultrasound_dataset"
 
 # Settings for the dataset :
 # Here the image size is set to 512 which is how the data will be preprocessed and prepared for training
