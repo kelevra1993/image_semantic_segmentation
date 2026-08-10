@@ -12,7 +12,8 @@ def preprocess(image: np.ndarray, image_size: int, keep_ratio: bool = True) -> n
     Args:
         image (np.ndarray): The input image array, typically of shape (Height, Width, Channels).
         image_size (int): The target width and height for the output square image.
-        keep_ratio (bool): If True, pads the image to maintain its original aspect ratio before resizing. Defaults to True.
+        keep_ratio (bool): If True, pads the image to maintain its original aspect ratio before resizing.
+        Defaults to True.
 
     Returns:
         np.ndarray: The preprocessed and resized image of shape (image_size, image_size, Channels).

@@ -83,8 +83,7 @@ def print_tensor_status(tensor: torch.Tensor, name: Optional[str] = "") -> None:
     Provides a comprehensive log of a tensor's shape, type, and device.
 
     Aggregates individual printing utilities to offer a single-point snapshot of a tensor's
-    state. This is particularly useful for deep debugging within dense modules like the
-    Evoformer or Structure Module where multiple transformations occur.
+    state. This is particularly useful for debugging
 
     Args:
         tensor (torch.Tensor): The torch.Tensor to inspect. Shape: (*).
