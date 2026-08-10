@@ -7,7 +7,16 @@ from app.utilities.os_utilities import load_experiment_configuration
 from app.utilities.data_utilities.dataloader import get_dataloaders
 
 
-def main():
+def main() -> None:
+    """
+    Entry point for the dataloader visualization script.
+
+    This function tests the data pipeline by loading the experiment configuration,
+    initializing the training dataloader, and fetching the first batch of data. 
+    It then creates a matplotlib plot displaying the input image alongside its
+    corresponding multi-class segmentation masks, saving the output to disk 
+    for visual verification of the dataset pipeline.
+    """
     print("Loading configurations...")
     configuration_path = Path("ultrasound_segmentation/configuration/configuration.yaml")
     experiment_configuration, model_configuration = load_experiment_configuration(configuration_path)

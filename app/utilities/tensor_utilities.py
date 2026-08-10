@@ -58,7 +58,17 @@ def print_tensor_type(tensor: torch.Tensor, name: Optional[str] = "") -> None:
 
 
 def print_tensor_min_max(tensor: torch.Tensor, name: Optional[str] = "") -> None:
-    """todo update docstring"""
+    """
+    Logs the minimum and maximum values of a tensor to the console.
+
+    This utility is crucial for debugging potential exploding or vanishing gradients and
+    verifying normalization steps within the MLOps pipeline, ensuring tensor values remain
+    within expected mathematical bounds.
+
+    Args:
+        tensor (torch.Tensor): The torch.Tensor to compute the min and max values for.
+        name (Optional[str], optional): An optional label to identify the tensor in the output.
+    """
     print_yellow(f"Tensor {name} Maximum Is : {tensor.max()}")
     print_yellow(f"Tensor {name} Minimum Is : {tensor.min()}")
 

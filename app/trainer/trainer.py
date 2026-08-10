@@ -186,7 +186,14 @@ class Trainer:
 
     def run_benchmarking_loop(self, benchmarking_iterations: int = 1e5) -> None:
         """
-        Todo document function
+        Executes a performance benchmarking loop to assess model throughput and training speed.
+        
+        This function iterates through the dataset for a specified number of iterations without
+        running a full training epoch. It is primarily used to isolate and measure the raw
+        performance of the forward/backward passes and data loading bottleneck within the MLOps pipeline.
+    
+        Args:
+            benchmarking_iterations (int): The total number of iterations to run the benchmark. Defaults to 100,000.
         """
 
         # Get dataloader
