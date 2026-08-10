@@ -235,3 +235,53 @@ def print_non_zero_pixels(numpy_array: np.ndarray, name: str) -> None:
     """
     non_zero_count = np.count_nonzero(numpy_array)
     print(f"We Have {non_zero_count} Non Zero Pixels for {name}")
+
+
+def visualize_focal_loss(parameter_dictionary: Dict[str, Dict[str, float]], window_size: int, spacing_x: int, spacing_y: int, focal_loss_class_image: torch.Tensor, ground_truth_tensor: torch.Tensor, prediction_tensor: torch.Tensor) -> None:
+    """
+    Visualizes the focal loss components using OpenCV windows.
+
+    This function isolates the visualization logic, creating a grid of OpenCV windows
+    to display the model prediction, ground truth mask, and focal loss image for each
+    class, scaled appropriately for display.
+
+    Args:
+        parameter_dictionary (Dict[str, Dict[str, float]]): The dictionary of class logits.
+        window_size (int): The display width and height for each window.
+        spacing_x (int): Horizontal spacing between windows in pixels.
+        spacing_y (int): Vertical spacing between windows in pixels.
+        focal_loss_class_image (torch.Tensor): The normalized focal loss image tensor.
+        ground_truth_tensor (torch.Tensor): The ground truth label tensor.
+        prediction_tensor (torch.Tensor): The raw prediction logit tensor.
+    """
+    for index, object_class in enumerate(parameter_dictionary, start=1):
+        index_model_predictions = torch.sigmoid(prediction_tensor[0, index])
+
+        # Calculate X and Y positions
+        col_0_x = spacing_x
+        col_1_x = col_0_x + window_size + spacing_x
+        col_2_x = col_1_x + window_size + spacing_x
+        row_y = spacing_y + (index - 1) * (window_size + spacing_y)
+
+        # 1. Model Prediction Window
+        prediction_name = f"Model Prediction - {object_class}"
+        cv2.namedWindow(prediction_name, cv2.WINDOW_NORMAL)
+        cv2.resizeWindow(prediction_name, window_size, window_size)
+        cv2.imshow(prediction_name, index_model_predictions.detach().cpu().numpy())
+        cv2.moveWindow(prediction_name, col_1_x, row_y)
+
+        # 2. Ground Truth Window
+        ground_truth_name = f"Ground Truth - {object_class}"
+        cv2.namedWindow(ground_truth_name, cv2.WINDOW_NORMAL)
+        cv2.resizeWindow(ground_truth_name, window_size, window_size)
+        cv2.imshow(ground_truth_name, ground_truth_tensor[0, index].detach().cpu().numpy())
+        cv2.moveWindow(ground_truth_name, col_0_x, row_y)
+
+        # 3. Focal Loss Window
+        focal_loss_name = f"Focal Loss - {object_class}"
+        cv2.namedWindow(focal_loss_name, cv2.WINDOW_NORMAL)
+        cv2.resizeWindow(focal_loss_name, window_size, window_size)
+        cv2.imshow(focal_loss_name, focal_loss_class_image.detach().cpu().numpy())
+        cv2.moveWindow(focal_loss_name, col_2_x, row_y)
+
+    cv2.waitKey(0)

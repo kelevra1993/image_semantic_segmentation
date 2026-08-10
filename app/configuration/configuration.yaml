@@ -1,6 +1,6 @@
 ExperimentConfiguration:
-  project_root: "/home/robert_kelevra/Projects/bacteria_biology/experiments_folder/experiment_2"
-  dataset_folder: "/home/robert_kelevra/Projects/bacteria_biology/utilities/ultrasound_dataset/preprocessed_512_KAR"
+  project_root: "/home/robert_kelevra/Projects/image_semantic_segmentation/experiments_folder/experiment_1"
+  dataset_folder: "/home/robert_kelevra/Projects/image_semantic_segmentation/ultrasound_dataset/preprocessed_512_KAR"
   information_dump: 500
   weight_saving_iterations: 2000
   number_iterations: 1e6
