@@ -302,7 +302,7 @@ def visualize_focal_loss(parameter_dictionary: Dict[str, Dict[str, float]], wind
                          spacing_y: int, focal_loss_class_image: torch.Tensor, ground_truth_tensor: torch.Tensor,
                          prediction_tensor: torch.Tensor,
                          object_information: Dict[str, Dict[str, Any]],
-                         save_visualisation: bool = False) -> None:
+                         save_visualization: bool = False) -> None:
     """
     Visualizes the focal loss components using OpenCV windows.
 
@@ -320,7 +320,7 @@ def visualize_focal_loss(parameter_dictionary: Dict[str, Dict[str, float]], wind
         ground_truth_tensor (torch.Tensor): The ground truth label tensor.
         prediction_tensor (torch.Tensor): The raw prediction logit tensor.
         object_information (Dict[str, Dict[str, Any]]): Pixel coordinates and metadata to sample the focal loss.
-        save_visualisation (bool): If True, saves the final concatenated visualization to disk.
+        save_visualization (bool): If True, saves the final concatenated visualization to disk.
     """
     vertical_list = []
 
@@ -378,7 +378,7 @@ def visualize_focal_loss(parameter_dictionary: Dict[str, Dict[str, float]], wind
     final_composite = concatenate_image_list(list_of_images=vertical_list,
                                              concatenation_orientation='vertical')
 
-    if save_visualisation:
+    if save_visualization:
         save_image = (final_composite * 255.0).astype(np.uint8)
         cv2.imwrite("focal_loss_visualisation.png", save_image)
 
@@ -431,7 +431,8 @@ def compute_class_probabilities(parameter_dictionary: Dict[str, Dict[str, float]
 def create_focal_loss_dataframe(parameter_dictionary: Dict[str, Dict[str, float]],
                                 probabilities: Dict[str, Dict[str, float]],
                                 focal_loss_image: torch.Tensor,
-                                object_information: Dict[str, Dict[str, Any]]) -> pd.DataFrame:
+                                object_information: Dict[str, Dict[str, Any]],
+                                gamma: float) -> pd.DataFrame:
     """
     Constructs a Pandas DataFrame aggregating regional probabilities alongside standard and focal losses.
 
@@ -445,6 +446,7 @@ def create_focal_loss_dataframe(parameter_dictionary: Dict[str, Dict[str, float]
         probabilities (Dict[str, Dict[str, float]]): The dictionary of class probabilities.
         focal_loss_image (torch.Tensor): The computed focal loss tensor.
         object_information (Dict[str, Dict[str, Any]]): Pixel coordinates and metadata to sample the focal loss.
+        gamma (float): Focusing parameter for the focal loss.
             
     Returns:
         pd.DataFrame: A DataFrame containing the required loss metrics.
@@ -467,20 +469,21 @@ def create_focal_loss_dataframe(parameter_dictionary: Dict[str, Dict[str, float]
 
         alpha_value = parameter_dictionary[object_class]["alpha"]
 
-        loss_ratio = loss_left / loss_right if loss_right != 0 else float('inf')
-        focal_loss_ratio = focal_loss_left / focal_loss_right if focal_loss_right != 0 else float('inf')
+        loss_ratio = loss_right / loss_left if loss_left != 0 else float('inf')
+        focal_loss_ratio = focal_loss_right / focal_loss_left if focal_loss_left != 0 else float('inf')
 
         data_list.append({"object_class": object_class,
                           "alpha": alpha_value,
+                          "gamma": gamma,
                           "softmax_left": softmax_left,
                           "softmax_right": softmax_right,
                           "loss_left": loss_left,
                           "loss_right": loss_right,
-                          "loss_left_over_right_ratio": loss_ratio,
+                          "loss_right_over_left_ratio": loss_ratio,
                           "normalisation_factor": non_zero_pixels,
                           "focal_loss_left": focal_loss_left,
                           "focal_loss_right": focal_loss_right,
-                          "focal_loss_left_over_right_ratio": focal_loss_ratio})
+                          "focal_loss_right_over_left_ratio": focal_loss_ratio})
 
     focal_loss_dataframe = pd.DataFrame(data=data_list)
 

@@ -25,7 +25,7 @@ def debug_focal_loss(parameter_dictionary: Dict[str, Dict[str, float]],
                      spacing_y: int,
                      alpha: List[float],
                      gamma: float,
-                     save_visualisation: bool = True) -> None:
+                     save_visualization: bool = True) -> None:
     """
     Creates a 5-class synthetic testing scenario to visually verify the focal loss implementation.
 
@@ -46,7 +46,7 @@ def debug_focal_loss(parameter_dictionary: Dict[str, Dict[str, float]],
         spacing_y (int): Vertical spacing between windows in pixels.
         alpha (List[float]): List of alpha weighting factors for each class.
         gamma (float): Focusing parameter for the focal loss.
-        save_visualisation (bool): If True, saves the visualization image to disk. Defaults to True.
+        save_visualization (bool): If True, saves the visualization image to disk. Defaults to True.
     """
     # Generate Data containing our object divided into two regions.
     ground_truth_tensor, prediction_tensor, object_information = create_input_data(
@@ -78,9 +78,10 @@ def debug_focal_loss(parameter_dictionary: Dict[str, Dict[str, float]],
     focal_loss_dataframe = create_focal_loss_dataframe(parameter_dictionary=parameter_dictionary,
                                                        probabilities=probabilities,
                                                        focal_loss_image=focal_loss_image,
-                                                       object_information=object_information)
+                                                       object_information=object_information,
+                                                       gamma=gamma)
 
-    print(focal_loss_dataframe.to_string())
+    print(focal_loss_dataframe.to_string(justify='center'))
 
     # Get visualization Of Focal Loss
     visualize_focal_loss(parameter_dictionary=parameter_dictionary,
@@ -88,7 +89,7 @@ def debug_focal_loss(parameter_dictionary: Dict[str, Dict[str, float]],
                          focal_loss_class_image=focal_loss_class_image,
                          ground_truth_tensor=ground_truth_tensor, prediction_tensor=prediction_tensor,
                          object_information=object_information,
-                         save_visualisation=save_visualisation)
+                         save_visualization=save_visualization)
 
 
 if __name__ == "__main__":
