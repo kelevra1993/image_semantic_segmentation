@@ -120,13 +120,20 @@ if __name__ == "__main__":
         "ellipse": {"left_logit": 2.8, "right_logit": 1.0, "alpha": 1.0}}
 
     experimental_parameters = {
+        # First Comparison : with and without gamma
         "1": {"alpha": {"circle": 1.0, "square": 1.0, "pentagon": 1.0, "ellipse": 1.0}, "gamma": 0.0},
-        "2": {"alpha": {"circle": 1.0, "square": 2.0, "pentagon": 1.0, "ellipse": 1.0}, "gamma": 0.0},
+        "2": {"alpha": {"circle": 1.0, "square": 1.0, "pentagon": 1.0, "ellipse": 1.0}, "gamma": 0.5},
+
+        # Second Comparison : scale alpha for one class
         "3": {"alpha": {"circle": 1.0, "square": 1.0, "pentagon": 1.0, "ellipse": 1.0}, "gamma": 0.5},
-        "4": {"alpha": {"circle": 1.0, "square": 1.0, "pentagon": 1.0, "ellipse": 1.0}, "gamma": 0.75},
-        "5": {"alpha": {"circle": 1.0, "square": 1.0, "pentagon": 1.0, "ellipse": 1.0}, "gamma": 1.0},
-        "6": {"alpha": {"circle": 1.0, "square": 1.0, "pentagon": 1.0, "ellipse": 1.0}, "gamma": 2.0},
-        "7": {"alpha": {"circle": 1.0, "square": 1.0, "pentagon": 1.0, "ellipse": 1.0}, "gamma": 4.0},
+        "4": {"alpha": {"circle": 1.0, "square": 2.0, "pentagon": 1.0, "ellipse": 1.0}, "gamma": 0.5},
+
+        # Third Comparison : Gradually Scaling up gamma
+        "5": {"alpha": {"circle": 1.0, "square": 1.0, "pentagon": 1.0, "ellipse": 1.0}, "gamma": 0.5},
+        "6": {"alpha": {"circle": 1.0, "square": 1.0, "pentagon": 1.0, "ellipse": 1.0}, "gamma": 1.0},
+        "7": {"alpha": {"circle": 1.0, "square": 1.0, "pentagon": 1.0, "ellipse": 1.0}, "gamma": 2.0},
+        "8": {"alpha": {"circle": 1.0, "square": 1.0, "pentagon": 1.0, "ellipse": 1.0}, "gamma": 4.0},
+        "9": {"alpha": {"circle": 1.0, "square": 1.0, "pentagon": 1.0, "ellipse": 1.0}, "gamma": 4.0},
     }
     # Dataframe that will contain all the different experiments that will be ran.
     experiments_dataframe = pd.DataFrame()
