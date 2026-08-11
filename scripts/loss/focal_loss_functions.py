@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 import math
 import pandas as pd
-from typing import Tuple, Dict, Any
+from typing import Tuple, Dict, Any, List
 from app.utilities.os_utilities import print_yellow
 
 # Suppress scientific notation in Pandas output
@@ -301,7 +301,8 @@ def compute_non_zero_pixels(numpy_array: np.ndarray, name: str, verbose: bool = 
 def visualize_focal_loss(parameter_dictionary: Dict[str, Dict[str, float]], window_size: int, spacing_x: int,
                          spacing_y: int, focal_loss_class_image: torch.Tensor, ground_truth_tensor: torch.Tensor,
                          prediction_tensor: torch.Tensor,
-                         object_information: Dict[str, Dict[str, Any]]) -> None:
+                         object_information: Dict[str, Dict[str, Any]],
+                         save_visualisation: bool = False) -> None:
     """
     Visualizes the focal loss components using OpenCV windows.
 
@@ -319,7 +320,10 @@ def visualize_focal_loss(parameter_dictionary: Dict[str, Dict[str, float]], wind
         ground_truth_tensor (torch.Tensor): The ground truth label tensor.
         prediction_tensor (torch.Tensor): The raw prediction logit tensor.
         object_information (Dict[str, Dict[str, Any]]): Pixel coordinates and metadata to sample the focal loss.
+        save_visualisation (bool): If True, saves the final concatenated visualization to disk.
     """
+    vertical_list = []
+
     for index, object_class in enumerate(parameter_dictionary, start=1):
         index_model_predictions = torch.sigmoid(prediction_tensor[0, index])
         prediction_image = cv2.cvtColor(index_model_predictions.detach().cpu().numpy(), cv2.COLOR_GRAY2BGR)
@@ -328,9 +332,9 @@ def visualize_focal_loss(parameter_dictionary: Dict[str, Dict[str, float]], wind
         right_position = object_information[object_class]["positions"]["right"]
 
         # Draw green point for left and red point for right (BGR format)
-        cv2.circle(img=prediction_image, center=(left_position[1], left_position[0]), radius=3, color=(0.0, 1.0, 0.0),
+        cv2.circle(img=prediction_image, center=(left_position[1], left_position[0]), radius=2, color=(0.0, 1.0, 0.0),
                    thickness=-1)
-        cv2.circle(img=prediction_image, center=(right_position[1], right_position[0]), radius=3, color=(0.0, 0.0, 1.0),
+        cv2.circle(img=prediction_image, center=(right_position[1], right_position[0]), radius=2, color=(0.0, 0.0, 1.0),
                    thickness=-1)
 
         # Calculate X and Y positions
@@ -348,17 +352,35 @@ def visualize_focal_loss(parameter_dictionary: Dict[str, Dict[str, float]], wind
 
         # 2. Ground Truth Window
         ground_truth_name = f"Ground Truth - {object_class}"
+        ground_truth_numpy = ground_truth_tensor[0, index].detach().cpu().numpy()
+        ground_truth_image = cv2.cvtColor(ground_truth_numpy, cv2.COLOR_GRAY2BGR)
         cv2.namedWindow(ground_truth_name, cv2.WINDOW_NORMAL)
         cv2.resizeWindow(ground_truth_name, window_size, window_size)
-        cv2.imshow(ground_truth_name, ground_truth_tensor[0, index].detach().cpu().numpy())
+        cv2.imshow(ground_truth_name, ground_truth_numpy)
         cv2.moveWindow(ground_truth_name, column_0_x, row_y)
 
         # 3. Focal Loss Window
         focal_loss_name = f"Focal Loss - {object_class}"
+        focal_loss_numpy = focal_loss_class_image.detach().cpu().numpy()
+        focal_loss_image_bgr = cv2.cvtColor(focal_loss_numpy, cv2.COLOR_GRAY2BGR)
         cv2.namedWindow(focal_loss_name, cv2.WINDOW_NORMAL)
         cv2.resizeWindow(focal_loss_name, window_size, window_size)
-        cv2.imshow(focal_loss_name, focal_loss_class_image.detach().cpu().numpy())
+        cv2.imshow(focal_loss_name, focal_loss_numpy)
         cv2.moveWindow(focal_loss_name, column_2_x, row_y)
+
+        # Concatenate horizontally (Ground Truth, Prediction, Focal Loss)
+        row_images = [ground_truth_image, prediction_image, focal_loss_image_bgr]
+        horizontal_image_concatenation = concatenate_image_list(list_of_images=row_images,
+                                                                concatenation_orientation='horizontal')
+        vertical_list.append(horizontal_image_concatenation)
+
+    # Concatenate all rows vertically
+    final_composite = concatenate_image_list(list_of_images=vertical_list,
+                                             concatenation_orientation='vertical')
+
+    if save_visualisation:
+        save_image = (final_composite * 255.0).astype(np.uint8)
+        cv2.imwrite("focal_loss_visualisation.png", save_image)
 
     cv2.waitKey(0)
 
@@ -463,3 +485,27 @@ def create_focal_loss_dataframe(parameter_dictionary: Dict[str, Dict[str, float]
     focal_loss_dataframe = pd.DataFrame(data=data_list)
 
     return focal_loss_dataframe
+
+
+def concatenate_image_list(list_of_images: List[np.ndarray], concatenation_orientation: str) -> np.ndarray:
+    """
+    Concatenates a list of images into a single composite layout for debugging visualization.
+    
+    This utility aggregates multiple single-class prediction or loss images into a single coherent view,
+    facilitating side-by-side comparison of spatial predictions within the project pipeline's debugging dashboard.
+    
+    Args:
+        list_of_images (List[np.ndarray]): A list containing the OpenCV images to be concatenated.
+        concatenation_orientation (str): The axis of concatenation, either 'horizontal' or 'vertical'.
+        
+    Returns:
+        np.ndarray: The concatenated composite image.
+    """
+    if concatenation_orientation == 'horizontal':
+        composite_image = cv2.hconcat(list_of_images)
+    elif concatenation_orientation == 'vertical':
+        composite_image = cv2.vconcat(list_of_images)
+    else:
+        raise ValueError("The argument concatenation_orientation must be 'horizontal' or 'vertical'.")
+
+    return composite_image

@@ -24,7 +24,8 @@ def debug_focal_loss(parameter_dictionary: Dict[str, Dict[str, float]],
                      spacing_x: int,
                      spacing_y: int,
                      alpha: List[float],
-                     gamma: float) -> None:
+                     gamma: float,
+                     save_visualisation: bool = True) -> None:
     """
     Creates a 5-class synthetic testing scenario to visually verify the focal loss implementation.
 
@@ -45,6 +46,7 @@ def debug_focal_loss(parameter_dictionary: Dict[str, Dict[str, float]],
         spacing_y (int): Vertical spacing between windows in pixels.
         alpha (List[float]): List of alpha weighting factors for each class.
         gamma (float): Focusing parameter for the focal loss.
+        save_visualisation (bool): If True, saves the visualization image to disk. Defaults to True.
     """
     # Generate Data containing our object divided into two regions.
     ground_truth_tensor, prediction_tensor, object_information = create_input_data(
@@ -85,7 +87,8 @@ def debug_focal_loss(parameter_dictionary: Dict[str, Dict[str, float]],
                          window_size=window_size, spacing_x=spacing_x, spacing_y=spacing_y,
                          focal_loss_class_image=focal_loss_class_image,
                          ground_truth_tensor=ground_truth_tensor, prediction_tensor=prediction_tensor,
-                         object_information=object_information)
+                         object_information=object_information,
+                         save_visualisation=save_visualisation)
 
 
 if __name__ == "__main__":
