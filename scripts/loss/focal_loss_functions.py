@@ -455,6 +455,11 @@ def create_focal_loss_dataframe(parameter_dictionary: Dict[str, Dict[str, float]
         loss_ratio = loss_right / loss_left if loss_left != 0 else float('inf')
         focal_loss_ratio = focal_loss_right / focal_loss_left if focal_loss_left != 0 else float('inf')
 
+        unnormalised_focal_loss_left = focal_loss_left * non_zero_pixels
+        unnormalised_focal_loss_right = focal_loss_right * non_zero_pixels
+        unnormalised_focal_loss_ratio = unnormalised_focal_loss_right / unnormalised_focal_loss_left if \
+            unnormalised_focal_loss_left != 0 else float('inf')
+
         data_list.append({"object_class": object_class,
                           "alpha": alpha_value,
                           "gamma": gamma,
@@ -466,7 +471,10 @@ def create_focal_loss_dataframe(parameter_dictionary: Dict[str, Dict[str, float]
                           "normalisation_factor": non_zero_pixels,
                           "focal_loss_left": focal_loss_left,
                           "focal_loss_right": focal_loss_right,
-                          "focal_loss_right_over_left_ratio": focal_loss_ratio})
+                          "focal_loss_right_over_left_ratio": focal_loss_ratio,
+                          "unnormalised_focal_loss_left": unnormalised_focal_loss_left,
+                          "unnormalised_focal_loss_right": unnormalised_focal_loss_right,
+                          "unnormalised_focal_loss_right_over_left_ratio": unnormalised_focal_loss_ratio})
 
     focal_loss_dataframe = pd.DataFrame(data=data_list)
 
