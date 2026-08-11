@@ -2,6 +2,8 @@ import torch
 import cv2
 import numpy as np
 import math
+import os
+import json
 import pandas as pd
 from typing import Tuple, Dict, Any, List
 from app.utilities.os_utilities import print_yellow
@@ -298,12 +300,15 @@ def compute_non_zero_pixels(numpy_array: np.ndarray, name: str, verbose: bool = 
     return non_zero_count
 
 
-def visualize_focal_loss(parameter_dictionary: Dict[str, Dict[str, float]], window_size: int, spacing_x: int,
+def process_focal_loss_image(parameter_dictionary: Dict[str, Dict[str, float]], window_size: int, spacing_x: int,
                          spacing_y: int, focal_loss_class_image: torch.Tensor, ground_truth_tensor: torch.Tensor,
                          prediction_tensor: torch.Tensor,
                          object_information: Dict[str, Dict[str, Any]],
-                         save_visualization: bool = False) -> None:
+                         save_visualization: bool = False,
+                         view_images:bool = False,
+                         experiment_folder: str = "") -> None:
     """
+    # todo to be updated
     Visualizes the focal loss components using OpenCV windows.
 
     This function isolates the visualization logic, creating a grid of OpenCV windows
@@ -321,6 +326,7 @@ def visualize_focal_loss(parameter_dictionary: Dict[str, Dict[str, float]], wind
         prediction_tensor (torch.Tensor): The raw prediction logit tensor.
         object_information (Dict[str, Dict[str, Any]]): Pixel coordinates and metadata to sample the focal loss.
         save_visualization (bool): If True, saves the final concatenated visualization to disk.
+        experiment_folder (str): The folder path where the visualization should be saved.
     """
     vertical_list = []
 
@@ -343,30 +349,13 @@ def visualize_focal_loss(parameter_dictionary: Dict[str, Dict[str, float]], wind
         column_2_x = column_1_x + window_size + spacing_x
         row_y = spacing_y + (index - 1) * (window_size + spacing_y)
 
-        # 1. Model Prediction Window
-        prediction_name = f"Model Prediction - {object_class}"
-        cv2.namedWindow(prediction_name, cv2.WINDOW_NORMAL)
-        cv2.resizeWindow(prediction_name, window_size, window_size)
-        cv2.imshow(prediction_name, prediction_image)
-        cv2.moveWindow(prediction_name, column_1_x, row_y)
-
-        # 2. Ground Truth Window
-        ground_truth_name = f"Ground Truth - {object_class}"
+        # Gather images for concatentation
+        # Ground Truth Image
         ground_truth_numpy = ground_truth_tensor[0, index].detach().cpu().numpy()
         ground_truth_image = cv2.cvtColor(ground_truth_numpy, cv2.COLOR_GRAY2BGR)
-        cv2.namedWindow(ground_truth_name, cv2.WINDOW_NORMAL)
-        cv2.resizeWindow(ground_truth_name, window_size, window_size)
-        cv2.imshow(ground_truth_name, ground_truth_numpy)
-        cv2.moveWindow(ground_truth_name, column_0_x, row_y)
-
-        # 3. Focal Loss Window
-        focal_loss_name = f"Focal Loss - {object_class}"
+        # Focal Loss Image
         focal_loss_numpy = focal_loss_class_image.detach().cpu().numpy()
         focal_loss_image_bgr = cv2.cvtColor(focal_loss_numpy, cv2.COLOR_GRAY2BGR)
-        cv2.namedWindow(focal_loss_name, cv2.WINDOW_NORMAL)
-        cv2.resizeWindow(focal_loss_name, window_size, window_size)
-        cv2.imshow(focal_loss_name, focal_loss_numpy)
-        cv2.moveWindow(focal_loss_name, column_2_x, row_y)
 
         # Concatenate horizontally (Ground Truth, Prediction, Focal Loss)
         row_images = [ground_truth_image, prediction_image, focal_loss_image_bgr]
@@ -374,15 +363,44 @@ def visualize_focal_loss(parameter_dictionary: Dict[str, Dict[str, float]], wind
                                                                 concatenation_orientation='horizontal')
         vertical_list.append(horizontal_image_concatenation)
 
+        if view_images:
+            # 1. Model Prediction Window
+            prediction_name = f"Model Prediction - {object_class}"
+            cv2.namedWindow(prediction_name, cv2.WINDOW_NORMAL)
+            cv2.resizeWindow(prediction_name, window_size, window_size)
+            cv2.imshow(prediction_name, prediction_image)
+            cv2.moveWindow(prediction_name, column_1_x, row_y)
+
+            # 2. Ground Truth Window
+            ground_truth_name = f"Ground Truth - {object_class}"
+            cv2.namedWindow(ground_truth_name, cv2.WINDOW_NORMAL)
+            cv2.resizeWindow(ground_truth_name, window_size, window_size)
+            cv2.imshow(ground_truth_name, ground_truth_numpy)
+            cv2.moveWindow(ground_truth_name, column_0_x, row_y)
+
+            # 3. Focal Loss Window
+            focal_loss_name = f"Focal Loss - {object_class}"
+            cv2.namedWindow(focal_loss_name, cv2.WINDOW_NORMAL)
+            cv2.resizeWindow(focal_loss_name, window_size, window_size)
+            cv2.imshow(focal_loss_name, focal_loss_numpy)
+            cv2.moveWindow(focal_loss_name, column_2_x, row_y)
+
     # Concatenate all rows vertically
     final_composite = concatenate_image_list(list_of_images=vertical_list,
                                              concatenation_orientation='vertical')
 
     if save_visualization:
-        save_image = (final_composite * 255.0).astype(np.uint8)
-        cv2.imwrite("focal_loss_visualisation.png", save_image)
+        if experiment_folder:
+            os.makedirs(experiment_folder, exist_ok=True)
+            save_path = os.path.join(experiment_folder, "focal_loss_visualisation.png")
+        else:
+            save_path = "focal_loss_visualisation.png"
 
-    cv2.waitKey(0)
+        save_image = (final_composite * 255.0).astype(np.uint8)
+        cv2.imwrite(save_path, save_image)
+
+    if view_images:
+        cv2.waitKey(0)
 
 
 def compute_class_probabilities(parameter_dictionary: Dict[str, Dict[str, float]], background_logit: float,
@@ -512,3 +530,28 @@ def concatenate_image_list(list_of_images: List[np.ndarray], concatenation_orien
         raise ValueError("The argument concatenation_orientation must be 'horizontal' or 'vertical'.")
 
     return composite_image
+
+
+def save_experimental_data(parameter_dictionary: Dict[str, Dict[str, float]],
+                           focal_loss_dataframe: pd.DataFrame,
+                           experiment_folder: str = "") -> None:
+    """
+    Saves the experimental parameter dictionary and the generated pandas DataFrame to disk.
+    
+    Args:
+        parameter_dictionary (Dict[str, Dict[str, float]]): The dictionary of class logits.
+        focal_loss_dataframe (pd.DataFrame): The generated focal loss metrics dataframe.
+        experiment_folder (str): The folder path where the outputs should be saved.
+    """
+    if experiment_folder:
+        os.makedirs(name=experiment_folder, exist_ok=True)
+        dictionary_path = os.path.join(experiment_folder, "parameter_dictionary.json")
+        dataframe_path = os.path.join(experiment_folder, "focal_loss_dataframe.csv")
+    else:
+        dictionary_path = "parameter_dictionary.json"
+        dataframe_path = "focal_loss_dataframe.csv"
+
+    with open(file=dictionary_path, mode='w') as dictionary_file:
+        json.dump(obj=parameter_dictionary, fp=dictionary_file, indent=4)
+
+    focal_loss_dataframe.to_csv(path_or_buf=dataframe_path, index=False)

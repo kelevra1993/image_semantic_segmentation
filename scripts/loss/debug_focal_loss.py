@@ -1,12 +1,15 @@
 import cv2
 import os
+
+import pandas as pd
 import torch
 from typing import Dict, Tuple, List
 from app.loss.focal_loss import FocalLoss
 from scripts.loss.focal_loss_functions import (create_input_data,
                                                visualize_focal_loss,
                                                compute_class_probabilities,
-                                               create_focal_loss_dataframe)
+                                               create_focal_loss_dataframe,
+                                               save_experimental_data)
 from app.utilities.os_utilities import print_yellow
 from app.utilities.tensor_utilities import print_tensor_status
 
@@ -25,7 +28,8 @@ def debug_focal_loss(parameter_dictionary: Dict[str, Dict[str, float]],
                      spacing_y: int,
                      alpha: List[float],
                      gamma: float,
-                     save_visualization: bool = True) -> None:
+                     save_experiment: bool = True,
+                     experiment_folder: str = "") -> pd.DataFrame:
     """
     Creates a 5-class synthetic testing scenario to visually verify the focal loss implementation.
 
@@ -46,7 +50,11 @@ def debug_focal_loss(parameter_dictionary: Dict[str, Dict[str, float]],
         spacing_y (int): Vertical spacing between windows in pixels.
         alpha (List[float]): List of alpha weighting factors for each class.
         gamma (float): Focusing parameter for the focal loss.
-        save_visualization (bool): If True, saves the visualization image to disk. Defaults to True.
+        save_experiment (bool): If True, saves the visualization image, parameters, and dataframe to disk. Defaults to True.
+        experiment_folder (str): The folder path where the outputs should be saved.
+        
+    Returns:
+        pd.DataFrame: The generated focal loss metrics dataframe.
     """
     # Generate Data containing our object divided into two regions.
     ground_truth_tensor, prediction_tensor, object_information = create_input_data(
@@ -81,15 +89,22 @@ def debug_focal_loss(parameter_dictionary: Dict[str, Dict[str, float]],
                                                        object_information=object_information,
                                                        gamma=gamma)
 
-    print(focal_loss_dataframe.to_string(justify='center'))
-
     # Get visualization Of Focal Loss
     visualize_focal_loss(parameter_dictionary=parameter_dictionary,
                          window_size=window_size, spacing_x=spacing_x, spacing_y=spacing_y,
                          focal_loss_class_image=focal_loss_class_image,
                          ground_truth_tensor=ground_truth_tensor, prediction_tensor=prediction_tensor,
                          object_information=object_information,
-                         save_visualization=save_visualization)
+                         save_visualization=save_experiment,
+                         experiment_folder=experiment_folder)
+
+    if save_experiment:
+        # Save the parameter_dictionary as well as the dataframe
+        save_experimental_data(parameter_dictionary=parameter_dictionary,
+                               focal_loss_dataframe=focal_loss_dataframe,
+                               experiment_folder=experiment_folder)
+
+    return focal_loss_dataframe
 
 
 if __name__ == "__main__":
@@ -113,13 +128,43 @@ if __name__ == "__main__":
         "square": {"left_logit": 2.8, "right_logit": 1.0, "alpha": 1.0},
         "pentagon": {"left_logit": 1.0, "right_logit": 5.0, "alpha": 1.0},
         "ellipse": {"left_logit": 2.8, "right_logit": 1.0, "alpha": 1.0}}
-    test_alpha = [1.0] + [test_parameter_dictionary[key]["alpha"] for key in test_parameter_dictionary]
-    test_gamma = 0.5
 
-    # Run focal loss debugger and visualizer
-    debug_focal_loss(parameter_dictionary=test_parameter_dictionary,
-                     image_size=test_image_size,
-                     background_logit=test_background_logit, inactive_logit=test_inactive_logit,
-                     number_classes=test_number_classes, batch_size=test_batch_size,
-                     window_size=test_window_size, spacing_x=test_spacing_x, spacing_y=test_spacing_y,
-                     alpha=test_alpha, gamma=test_gamma)
+    experimental_parameters = {
+        "experiment_1": {"alpha": {"circle": 1.0, "square": 1.0, "pentagon": 1.0, "ellipse": 1.0}, "gamma": 0.5},
+        "experiment_2": {"alpha": {"circle": 1.0, "square": 1.0, "pentagon": 1.0, "ellipse": 1.0}, "gamma": 0.5},
+        "experiment_3": {"alpha": {"circle": 1.0, "square": 1.0, "pentagon": 1.0, "ellipse": 1.0}, "gamma": 0.5},
+        "experiment_4": {"alpha": {"circle": 1.0, "square": 1.0, "pentagon": 1.0, "ellipse": 1.0}, "gamma": 0.5},
+        "experiment_5": {"alpha": {"circle": 1.0, "square": 1.0, "pentagon": 1.0, "ellipse": 1.0}, "gamma": 0.5}}
+
+    # Dataframe that will contain all the different experiments that will be ran.
+    experiments_dataframe = pd.DataFrame()
+
+    for experiment_name, experiment_information in experimental_parameters.items():
+        # Update test_parameter_dictionary with alphas for this experiment
+        for shape, alpha_value in experiment_information["alpha"].items():
+            test_parameter_dictionary[shape]["alpha"] = alpha_value
+
+        # get alphas (background will always be 1.0)
+        test_alpha = [1.0] + [test_parameter_dictionary[key]["alpha"] for key in test_parameter_dictionary]
+        test_gamma = experiment_information["gamma"]
+
+        # Run focal loss debugger and visualizer
+        experiment_dataframe = debug_focal_loss(parameter_dictionary=test_parameter_dictionary,
+                                                image_size=test_image_size,
+                                                background_logit=test_background_logit,
+                                                inactive_logit=test_inactive_logit,
+                                                number_classes=test_number_classes,
+                                                batch_size=test_batch_size,
+                                                window_size=test_window_size,
+                                                spacing_x=test_spacing_x,
+                                                spacing_y=test_spacing_y,
+                                                alpha=test_alpha, gamma=test_gamma,
+                                                save_experiment=True,
+                                                experiment_folder=os.path.join("experiments", experiment_name))
+
+        # Add the experiment identifier as the first column
+        experiment_dataframe.insert(loc=0, column="experiment", value=experiment_name)
+        experiments_dataframe = pd.concat(objs=[experiments_dataframe, experiment_dataframe], ignore_index=True)
+
+    print_yellow("All experiments finished.")
+    print(experiments_dataframe.to_string(justify='center'))
