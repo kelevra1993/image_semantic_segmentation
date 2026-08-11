@@ -151,7 +151,6 @@ def create_input_data(image_size: Tuple[int, int], background_logit: float,
                       number_of_classes: int = 5, batch_size: int = 1,
                       verbose: bool = False) -> Tuple[torch.Tensor, torch.Tensor, Dict[str, Dict[str, Any]]]:
     """
-    todo add verbose
     Generates synthetic ground truth masks and corresponding prediction logits for focal loss verification.
     
     This function creates a controlled 5-channel tensor environment (background + 4 geometric shapes) 
@@ -177,9 +176,10 @@ def create_input_data(image_size: Tuple[int, int], background_logit: float,
         inactive_logit (float): Logit value for pixels not belonging to a class. Defaults to -20.0.
         number_of_classes (int): Total number of output classes. Defaults to 5.
         batch_size (int): The batch size of the generated tensors. Defaults to 1.
+        verbose (bool): If True, prints additional debug info. Defaults to False.
             
     Returns:
-        Tuple[torch.Tensor, torch.Tensor, Dict[str, Dict[str, Tuple[int, int]]]]: A tuple containing:
+        Tuple[torch.Tensor, torch.Tensor, Dict[str, Dict[str, Any]]]: A tuple containing:
             - The ground truth tensor of shape (batch_size, number_of_classes, height, width).
             - The prediction tensor of shape (batch_size, number_of_classes, height, width).
             - A dictionary of spatial sampling positions and non-zero pixels for each object.
@@ -445,15 +445,20 @@ def create_focal_loss_dataframe(parameter_dictionary: Dict[str, Dict[str, float]
 
         alpha_value = parameter_dictionary[object_class]["alpha"]
 
+        loss_ratio = loss_left / loss_right if loss_right != 0 else float('inf')
+        focal_loss_ratio = focal_loss_left / focal_loss_right if focal_loss_right != 0 else float('inf')
+
         data_list.append({"object_class": object_class,
+                          "alpha": alpha_value,
                           "softmax_left": softmax_left,
                           "softmax_right": softmax_right,
                           "loss_left": loss_left,
                           "loss_right": loss_right,
-                          "alpha": alpha_value,
+                          "loss_left_over_right_ratio": loss_ratio,
                           "normalisation_factor": non_zero_pixels,
                           "focal_loss_left": focal_loss_left,
-                          "focal_loss_right": focal_loss_right})
+                          "focal_loss_right": focal_loss_right,
+                          "focal_loss_left_over_right_ratio": focal_loss_ratio})
 
     focal_loss_dataframe = pd.DataFrame(data=data_list)
 

@@ -23,6 +23,7 @@ def debug_focal_loss(parameter_dictionary: Dict[str, Dict[str, float]],
                      window_size: int,
                      spacing_x: int,
                      spacing_y: int,
+                     length_separator: int,
                      alpha: List[float],
                      gamma: float) -> None:
     """
@@ -43,6 +44,7 @@ def debug_focal_loss(parameter_dictionary: Dict[str, Dict[str, float]],
         window_size (int): The display width and height for each OpenCV window.
         spacing_x (int): Horizontal spacing between windows in pixels.
         spacing_y (int): Vertical spacing between windows in pixels.
+        length_separator (int): The number of characters to use for the visual separator.
         alpha (List[float]): List of alpha weighting factors for each class.
         gamma (float): Focusing parameter for the focal loss.
     """
@@ -58,10 +60,8 @@ def debug_focal_loss(parameter_dictionary: Dict[str, Dict[str, float]],
     # Initialize FocalLoss
     device = torch.device('cpu')
 
-    focal_loss = FocalLoss(alpha=alpha,
-                           gamma=gamma, device=device, dtype=torch.float32)
-
-    # Compute Loss
+    # Create Focal Loss Object And Compute The Loss
+    focal_loss = FocalLoss(alpha=alpha, gamma=gamma, device=device, dtype=torch.float32)
     loss, focal_loss_image = focal_loss(prediction_tensor,
                                         ground_truth_tensor)
 
@@ -100,8 +100,8 @@ if __name__ == "__main__":
 
     # Definition of visualizers
     test_image_size = (400, 400)
-    test_background_logit = 0.0
-    test_inactive_logit = -20.0
+    test_background_logit = 0.8
+    test_inactive_logit = -10.0
     test_number_classes = 5
     test_batch_size = 1
     test_window_size = 400
