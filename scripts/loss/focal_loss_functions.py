@@ -300,27 +300,23 @@ def compute_non_zero_pixels(numpy_array: np.ndarray, name: str, verbose: bool = 
     return non_zero_count
 
 
-def process_focal_loss_image(parameter_dictionary: Dict[str, Dict[str, float]], window_size: int, spacing_x: int,
-                         spacing_y: int, focal_loss_class_image: torch.Tensor, ground_truth_tensor: torch.Tensor,
-                         prediction_tensor: torch.Tensor,
-                         object_information: Dict[str, Dict[str, Any]],
-                         save_visualization: bool = False,
-                         view_images:bool = False,
-                         experiment_folder: str = "") -> None:
+def export_focal_loss_visualization(parameter_dictionary: Dict[str, Dict[str, float]],
+                                    focal_loss_class_image: torch.Tensor,
+                                    ground_truth_tensor: torch.Tensor,
+                                    prediction_tensor: torch.Tensor,
+                                    object_information: Dict[str, Dict[str, Any]],
+                                    save_visualization: bool = False,
+                                    experiment_folder: str = "") -> None:
     """
-    # todo to be updated
-    Visualizes the focal loss components using OpenCV windows.
+    Generates and saves a composite image visualizing the focal loss components.
 
-    This function isolates the visualization logic, creating a grid of OpenCV windows
-    to display the model prediction, ground truth mask, and focal loss image for each
-    class, scaled appropriately for display. It also plots green and red points on the
-    model prediction image to indicate the sampling locations for the left and right sides.
+    This function extracts the model prediction, ground truth mask, and focal loss image
+    for each class, concatenates them into a single coherent view, and plots green and red 
+    points on the model prediction image to indicate the sampling locations for the left 
+    and right sides. The final composite image can be saved to the provided experiment folder.
 
     Args:
         parameter_dictionary (Dict[str, Dict[str, float]]): The dictionary of class logits.
-        window_size (int): The display width and height for each window.
-        spacing_x (int): Horizontal spacing between windows in pixels.
-        spacing_y (int): Vertical spacing between windows in pixels.
         focal_loss_class_image (torch.Tensor): The normalized focal loss image tensor.
         ground_truth_tensor (torch.Tensor): The ground truth label tensor.
         prediction_tensor (torch.Tensor): The raw prediction logit tensor.
@@ -343,12 +339,6 @@ def process_focal_loss_image(parameter_dictionary: Dict[str, Dict[str, float]], 
         cv2.circle(img=prediction_image, center=(right_position[1], right_position[0]), radius=2, color=(0.0, 0.0, 1.0),
                    thickness=-1)
 
-        # Calculate X and Y positions
-        column_0_x = spacing_x
-        column_1_x = column_0_x + window_size + spacing_x
-        column_2_x = column_1_x + window_size + spacing_x
-        row_y = spacing_y + (index - 1) * (window_size + spacing_y)
-
         # Gather images for concatentation
         # Ground Truth Image
         ground_truth_numpy = ground_truth_tensor[0, index].detach().cpu().numpy()
@@ -363,28 +353,6 @@ def process_focal_loss_image(parameter_dictionary: Dict[str, Dict[str, float]], 
                                                                 concatenation_orientation='horizontal')
         vertical_list.append(horizontal_image_concatenation)
 
-        if view_images:
-            # 1. Model Prediction Window
-            prediction_name = f"Model Prediction - {object_class}"
-            cv2.namedWindow(prediction_name, cv2.WINDOW_NORMAL)
-            cv2.resizeWindow(prediction_name, window_size, window_size)
-            cv2.imshow(prediction_name, prediction_image)
-            cv2.moveWindow(prediction_name, column_1_x, row_y)
-
-            # 2. Ground Truth Window
-            ground_truth_name = f"Ground Truth - {object_class}"
-            cv2.namedWindow(ground_truth_name, cv2.WINDOW_NORMAL)
-            cv2.resizeWindow(ground_truth_name, window_size, window_size)
-            cv2.imshow(ground_truth_name, ground_truth_numpy)
-            cv2.moveWindow(ground_truth_name, column_0_x, row_y)
-
-            # 3. Focal Loss Window
-            focal_loss_name = f"Focal Loss - {object_class}"
-            cv2.namedWindow(focal_loss_name, cv2.WINDOW_NORMAL)
-            cv2.resizeWindow(focal_loss_name, window_size, window_size)
-            cv2.imshow(focal_loss_name, focal_loss_numpy)
-            cv2.moveWindow(focal_loss_name, column_2_x, row_y)
-
     # Concatenate all rows vertically
     final_composite = concatenate_image_list(list_of_images=vertical_list,
                                              concatenation_orientation='vertical')
@@ -398,9 +366,6 @@ def process_focal_loss_image(parameter_dictionary: Dict[str, Dict[str, float]], 
 
         save_image = (final_composite * 255.0).astype(np.uint8)
         cv2.imwrite(save_path, save_image)
-
-    if view_images:
-        cv2.waitKey(0)
 
 
 def compute_class_probabilities(parameter_dictionary: Dict[str, Dict[str, float]], background_logit: float,

@@ -6,7 +6,7 @@ import torch
 from typing import Dict, Tuple, List
 from app.loss.focal_loss import FocalLoss
 from scripts.loss.focal_loss_functions import (create_input_data,
-                                               visualize_focal_loss,
+                                               export_focal_loss_visualization,
                                                compute_class_probabilities,
                                                create_focal_loss_dataframe,
                                                save_experimental_data)
@@ -23,9 +23,6 @@ def debug_focal_loss(parameter_dictionary: Dict[str, Dict[str, float]],
                      inactive_logit: float,
                      number_classes: int,
                      batch_size: int,
-                     window_size: int,
-                     spacing_x: int,
-                     spacing_y: int,
                      alpha: List[float],
                      gamma: float,
                      save_experiment: bool = True,
@@ -45,9 +42,6 @@ def debug_focal_loss(parameter_dictionary: Dict[str, Dict[str, float]],
         inactive_logit (float): Logit value for pixels not belonging to a class.
         number_classes (int): Total number of output classes.
         batch_size (int): The batch size of the generated tensors.
-        window_size (int): The display width and height for each OpenCV window.
-        spacing_x (int): Horizontal spacing between windows in pixels.
-        spacing_y (int): Vertical spacing between windows in pixels.
         alpha (List[float]): List of alpha weighting factors for each class.
         gamma (float): Focusing parameter for the focal loss.
         save_experiment (bool): If True, saves the visualization image, parameters, and dataframe to disk. Defaults to True.
@@ -90,13 +84,13 @@ def debug_focal_loss(parameter_dictionary: Dict[str, Dict[str, float]],
                                                        gamma=gamma)
 
     # Get visualization Of Focal Loss
-    visualize_focal_loss(parameter_dictionary=parameter_dictionary,
-                         window_size=window_size, spacing_x=spacing_x, spacing_y=spacing_y,
-                         focal_loss_class_image=focal_loss_class_image,
-                         ground_truth_tensor=ground_truth_tensor, prediction_tensor=prediction_tensor,
-                         object_information=object_information,
-                         save_visualization=save_experiment,
-                         experiment_folder=experiment_folder)
+    export_focal_loss_visualization(parameter_dictionary=parameter_dictionary,
+                                    focal_loss_class_image=focal_loss_class_image,
+                                    ground_truth_tensor=ground_truth_tensor,
+                                    prediction_tensor=prediction_tensor,
+                                    object_information=object_information,
+                                    save_visualization=save_experiment,
+                                    experiment_folder=experiment_folder)
 
     if save_experiment:
         # Save the parameter_dictionary as well as the dataframe
@@ -108,16 +102,12 @@ def debug_focal_loss(parameter_dictionary: Dict[str, Dict[str, float]],
 
 
 if __name__ == "__main__":
-    # Visualisation parameters that are always constant
-    # Definition of visualizers
-    test_window_size = 200
-    test_image_size = (test_window_size, test_window_size)
+    # Constant Values Across All Experiments That Never Change
+    test_image_size = (200, 200)
     test_number_classes = 5
     test_batch_size = 1
-    test_spacing_x = 80
-    test_spacing_y = 60
 
-    # Additional constant values accross experiments
+    # Additional constant values accross experiments but might change
     test_background_logit = 0.8
     test_inactive_logit = -10.0
 
@@ -155,9 +145,6 @@ if __name__ == "__main__":
                                                 inactive_logit=test_inactive_logit,
                                                 number_classes=test_number_classes,
                                                 batch_size=test_batch_size,
-                                                window_size=test_window_size,
-                                                spacing_x=test_spacing_x,
-                                                spacing_y=test_spacing_y,
                                                 alpha=test_alpha, gamma=test_gamma,
                                                 save_experiment=True,
                                                 experiment_folder=os.path.join("experiments", experiment_name))
