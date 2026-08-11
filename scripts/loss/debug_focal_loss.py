@@ -103,7 +103,7 @@ def debug_focal_loss(parameter_dictionary: Dict[str, Dict[str, float]],
 
 if __name__ == "__main__":
     # Constant Values Across All Experiments That Never Change
-    test_image_size = (200, 200)
+    test_image_size = (400, 400)
     test_number_classes = 5
     test_batch_size = 1
 

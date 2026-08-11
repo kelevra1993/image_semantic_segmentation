@@ -8,6 +8,14 @@ import pandas as pd
 from typing import Tuple, Dict, Any, List
 from app.utilities.os_utilities import print_yellow
 
+GROUND_TRUTH_COLORS = [
+    (255, 0, 0),  # Blue
+    (0, 255, 0),  # Green
+    (0, 0, 255),  # Red
+    (255, 255, 0),  # Cyan
+    (255, 0, 255)  # Magenta
+]
+
 # Suppress scientific notation in Pandas output
 pd.set_option('display.float_format', lambda x: f'{x:.5f}')
 
@@ -308,12 +316,15 @@ def export_focal_loss_visualization(parameter_dictionary: Dict[str, Dict[str, fl
                                     save_visualization: bool = False,
                                     experiment_folder: str = "") -> None:
     """
-    Generates and saves a composite image visualizing the focal loss components.
+    Generates and saves a composite image visualizing the focal loss components and ground truth.
 
-    This function extracts the model prediction, ground truth mask, and focal loss image
-    for each class, concatenates them into a single coherent view, and plots green and red 
-    points on the model prediction image to indicate the sampling locations for the left 
-    and right sides. The final composite image can be saved to the provided experiment folder.
+    This function isolates the visualization logic for the debugging pipeline, creating 
+    composite images to review model predictions versus actual ground truth. It extracts 
+    the model prediction, ground truth mask, and focal loss image for each class, 
+    concatenates them into a single coherent view, and plots green and red points on the 
+    model prediction image to indicate the sampling locations for the left and right sides. 
+    It also generates a single colored image overlaying all ground truth classes. The 
+    final images are saved to the provided experiment folder.
 
     Args:
         parameter_dictionary (Dict[str, Dict[str, float]]): The dictionary of class logits.
@@ -359,13 +370,30 @@ def export_focal_loss_visualization(parameter_dictionary: Dict[str, Dict[str, fl
 
     if save_visualization:
         if experiment_folder:
-            os.makedirs(experiment_folder, exist_ok=True)
+            os.makedirs(name=experiment_folder, exist_ok=True)
             save_path = os.path.join(experiment_folder, "focal_loss_visualisation.png")
         else:
             save_path = "focal_loss_visualisation.png"
 
-        save_image = (final_composite * 255.0).astype(np.uint8)
-        cv2.imwrite(save_path, save_image)
+        save_image = (final_composite * 255.0).astype(dtype=np.uint8)
+        cv2.imwrite(filename=save_path, img=save_image)
+
+        # Generate and save colored ground truth composite image
+        height = ground_truth_tensor.shape[2]
+        width = ground_truth_tensor.shape[3]
+        colored_ground_truth = np.zeros(shape=(height, width, 3), dtype=np.uint8)
+
+        for index in range(1, ground_truth_tensor.shape[1]):
+            class_mask = ground_truth_tensor[0, index].detach().cpu().numpy()
+            color = GROUND_TRUTH_COLORS[(index - 1) % len(GROUND_TRUTH_COLORS)]
+            colored_ground_truth[class_mask == 1.0] = color
+
+        if experiment_folder:
+            ground_truth_save_path = os.path.join(experiment_folder, "ground_truth_image.png")
+        else:
+            ground_truth_save_path = "ground_truth_image.png"
+
+        cv2.imwrite(filename=ground_truth_save_path, img=colored_ground_truth)
 
 
 def compute_class_probabilities(parameter_dictionary: Dict[str, Dict[str, float]], background_logit: float,
