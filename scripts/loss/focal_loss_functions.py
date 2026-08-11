@@ -6,6 +6,9 @@ import pandas as pd
 from typing import Tuple, Dict, Any
 from app.utilities.os_utilities import print_yellow
 
+# Suppress scientific notation in Pandas output
+pd.set_option('display.float_format', lambda x: f'{x:.5f}')
+
 
 def create_circle_data(quadrant_width: int, quadrant_height: int, left_logit: float, right_logit: float,
                        inactive_logit: float = -10.0) -> Tuple[np.ndarray, np.ndarray]:
