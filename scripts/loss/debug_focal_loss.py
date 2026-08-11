@@ -23,7 +23,6 @@ def debug_focal_loss(parameter_dictionary: Dict[str, Dict[str, float]],
                      window_size: int,
                      spacing_x: int,
                      spacing_y: int,
-                     length_separator: int,
                      alpha: List[float],
                      gamma: float) -> None:
     """
@@ -44,7 +43,6 @@ def debug_focal_loss(parameter_dictionary: Dict[str, Dict[str, float]],
         window_size (int): The display width and height for each OpenCV window.
         spacing_x (int): Horizontal spacing between windows in pixels.
         spacing_y (int): Vertical spacing between windows in pixels.
-        length_separator (int): The number of characters to use for the visual separator.
         alpha (List[float]): List of alpha weighting factors for each class.
         gamma (float): Focusing parameter for the focal loss.
     """
