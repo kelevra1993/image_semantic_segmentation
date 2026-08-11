@@ -97,12 +97,12 @@ if __name__ == "__main__":
         "ellipse": {"left_logit": 2.8, "right_logit": 1.0, "alpha": 1.0}}
 
     # Definition of visualizers
-    test_image_size = (400, 400)
+    test_window_size = 200
+    test_image_size = (test_window_size, test_window_size)
     test_background_logit = 0.8
     test_inactive_logit = -10.0
     test_number_classes = 5
     test_batch_size = 1
-    test_window_size = 400
     test_spacing_x = 80
     test_spacing_y = 60
     test_alpha = [1.0] + [test_parameter_dictionary[key]["alpha"] for key in test_parameter_dictionary]
