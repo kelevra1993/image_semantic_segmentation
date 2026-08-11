@@ -1,12 +1,11 @@
 import cv2
 import os
 import torch
-from typing import Dict, Tuple
+from typing import Dict, Tuple, List
 from app.loss.focal_loss import FocalLoss
 from scripts.loss.focal_loss_functions import (create_input_data,
                                                visualize_focal_loss,
                                                compute_class_probabilities,
-                                               print_class_probabilities,
                                                create_focal_loss_dataframe)
 from app.utilities.os_utilities import print_yellow
 from app.utilities.tensor_utilities import print_tensor_status
@@ -24,7 +23,8 @@ def debug_focal_loss(parameter_dictionary: Dict[str, Dict[str, float]],
                      window_size: int,
                      spacing_x: int,
                      spacing_y: int,
-                     length_separator: int) -> None:
+                     alpha: List[float],
+                     gamma: float) -> None:
     """
     Creates a 5-class synthetic testing scenario to visually verify the focal loss implementation.
 
@@ -43,7 +43,8 @@ def debug_focal_loss(parameter_dictionary: Dict[str, Dict[str, float]],
         window_size (int): The display width and height for each OpenCV window.
         spacing_x (int): Horizontal spacing between windows in pixels.
         spacing_y (int): Vertical spacing between windows in pixels.
-        length_separator (int): The number of characters to use for the visual separator.
+        alpha (List[float]): List of alpha weighting factors for each class.
+        gamma (float): Focusing parameter for the focal loss.
     """
     # Generate Data containing our object divided into two regions.
     ground_truth_tensor, prediction_tensor, object_information = create_input_data(
@@ -52,24 +53,17 @@ def debug_focal_loss(parameter_dictionary: Dict[str, Dict[str, float]],
         logit_dictionary=parameter_dictionary,
         inactive_logit=inactive_logit,
         number_of_classes=number_classes,
-        batch_size=batch_size,
-        verbose=True)
+        batch_size=batch_size)
 
     # Initialize FocalLoss
     device = torch.device('cpu')
 
-    focal_loss = FocalLoss(alpha=[1.0,
-                                  parameter_dictionary["circle"]["alpha"],
-                                  parameter_dictionary["square"]["alpha"],
-                                  parameter_dictionary["pentagon"]["alpha"],
-                                  parameter_dictionary["ellipse"]["alpha"]],
-                           gamma=0.0, device=device, dtype=torch.float32)
+    focal_loss = FocalLoss(alpha=alpha,
+                           gamma=gamma, device=device, dtype=torch.float32)
 
     # Compute Loss
-    loss, focal_loss_image, focal_loss_numerator, focal_loss_denominator = focal_loss(prediction_tensor,
-                                                                                      ground_truth_tensor)
-
-    print_tensor_status(focal_loss_numerator)
+    loss, focal_loss_image = focal_loss(prediction_tensor,
+                                        ground_truth_tensor)
 
     # Globally min-max normalize the image
     focal_min, focal_max = focal_loss_image[0].min(), focal_loss_image[0].max()
@@ -81,18 +75,12 @@ def debug_focal_loss(parameter_dictionary: Dict[str, Dict[str, float]],
                                                 inactive_logit=inactive_logit)
 
     # Generate and print dataframe
-    focal_loss_dataframe = create_focal_loss_dataframe(probabilities=probabilities,
+    focal_loss_dataframe = create_focal_loss_dataframe(parameter_dictionary=parameter_dictionary,
+                                                       probabilities=probabilities,
                                                        focal_loss_image=focal_loss_image,
                                                        object_information=object_information)
 
     print(focal_loss_dataframe.to_string())
-
-    focal_loss_numerator_dataframe = create_focal_loss_dataframe(probabilities=probabilities,
-                                                                 focal_loss_image=focal_loss_numerator,
-                                                                 object_information=object_information)
-
-    print(focal_loss_numerator_dataframe.to_string())
-    print(torch.unique(focal_loss_denominator))
 
     # Get visualization Of Focal Loss
     visualize_focal_loss(parameter_dictionary=parameter_dictionary,
@@ -119,7 +107,8 @@ if __name__ == "__main__":
     test_window_size = 400
     test_spacing_x = 80
     test_spacing_y = 60
-    test_length_separator = 50
+    test_alpha = [1.0] + [test_parameter_dictionary[key]["alpha"] for key in test_parameter_dictionary]
+    test_gamma = 0.5
 
     # Run focal loss debugger and visualizer
     debug_focal_loss(parameter_dictionary=test_parameter_dictionary,
@@ -127,4 +116,4 @@ if __name__ == "__main__":
                      background_logit=test_background_logit, inactive_logit=test_inactive_logit,
                      number_classes=test_number_classes, batch_size=test_batch_size,
                      window_size=test_window_size, spacing_x=test_spacing_x, spacing_y=test_spacing_y,
-                     length_separator=test_length_separator)
+                     alpha=test_alpha, gamma=test_gamma)

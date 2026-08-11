@@ -403,24 +403,8 @@ def compute_class_probabilities(parameter_dictionary: Dict[str, Dict[str, float]
     return probabilities
 
 
-def print_class_probabilities(probabilities: Dict[str, Dict[str, float]], length_separator: int = 50) -> None:
-    """
-    Prints the computed probabilities for the left and right sides of each class.
-
-    Args:
-        probabilities (Dict[str, Dict[str, float]]): The dictionary of class probabilities.
-        length_separator (int): The number of characters to use for the visual separator. Defaults to 50.
-    """
-    print(length_separator * "#")
-    print_yellow("----Class Probabilities----")
-    for predicted_class, probability_information in probabilities.items():
-        print(f"Softmax For {predicted_class.upper()}: \n"
-              f" - Left Part : {probability_information['left_probability']:.3f}\n"
-              f" - Right Part: {probability_information['right_probability']:.3f}")
-    print(length_separator * "#")
-
-
-def create_focal_loss_dataframe(probabilities: Dict[str, Dict[str, float]],
+def create_focal_loss_dataframe(parameter_dictionary: Dict[str, Dict[str, float]],
+                                probabilities: Dict[str, Dict[str, float]],
                                 focal_loss_image: torch.Tensor,
                                 object_information: Dict[str, Dict[str, Any]]) -> pd.DataFrame:
     """
@@ -432,6 +416,7 @@ def create_focal_loss_dataframe(probabilities: Dict[str, Dict[str, float]],
     and verify that the focal loss correctly down-weights well-classified examples.
     
     Args:
+        parameter_dictionary (Dict[str, Dict[str, float]]): The dictionary of class logits and alpha values.
         probabilities (Dict[str, Dict[str, float]]): The dictionary of class probabilities.
         focal_loss_image (torch.Tensor): The computed focal loss tensor.
         object_information (Dict[str, Dict[str, Any]]): Pixel coordinates and metadata to sample the focal loss.
@@ -455,11 +440,14 @@ def create_focal_loss_dataframe(probabilities: Dict[str, Dict[str, float]],
         focal_loss_left = focal_loss_image[0, left_position[0], left_position[1]].item()
         focal_loss_right = focal_loss_image[0, right_position[0], right_position[1]].item()
 
+        alpha_value = parameter_dictionary[object_class]["alpha"]
+
         data_list.append({"object_class": object_class,
                           "softmax_left": softmax_left,
                           "softmax_right": softmax_right,
                           "loss_left": loss_left,
                           "loss_right": loss_right,
+                          "alpha": alpha_value,
                           "normalisation_factor": non_zero_pixels,
                           "focal_loss_left": focal_loss_left,
                           "focal_loss_right": focal_loss_right})
