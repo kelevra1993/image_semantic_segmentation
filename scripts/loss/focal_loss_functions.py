@@ -8,12 +8,12 @@ import pandas as pd
 from typing import Tuple, Dict, Any, List
 from app.utilities.os_utilities import print_yellow
 
-GROUND_TRUTH_COLORS = [
-    (255, 0, 0),  # Blue
-    (0, 255, 0),  # Green
-    (0, 0, 255),  # Red
+OBJECT_COLORS = [
+    (255, 0, 0),    # Blue
+    (0, 255, 0),    # Green
+    (0, 0, 255),    # Red
     (255, 255, 0),  # Cyan
-    (255, 0, 255)  # Magenta
+    (255, 0, 255)   # Magenta
 ]
 
 # Suppress scientific notation in Pandas output
@@ -368,6 +368,33 @@ def export_focal_loss_visualization(parameter_dictionary: Dict[str, Dict[str, fl
     final_composite = concatenate_image_list(list_of_images=vertical_list,
                                              concatenation_orientation='vertical')
 
+    # Save the visualizations
+    save_visualisations(final_composite=final_composite,
+                        ground_truth_tensor=ground_truth_tensor,
+                        prediction_tensor=prediction_tensor,
+                        save_visualization=save_visualization,
+                        experiment_folder=experiment_folder)
+
+
+def save_visualisations(final_composite: np.ndarray,
+                        ground_truth_tensor: torch.Tensor,
+                        prediction_tensor: torch.Tensor,
+                        save_visualization: bool = False,
+                        experiment_folder: str = "") -> None:
+    """
+    Saves the generated composite image, ground truth masks, and prediction overlays to disk.
+
+    This function isolates the saving logic for the visual debugger. If save_visualization 
+    is True, it exports the composite focal loss grid, a colored map of all ground truth 
+    objects, and a colored map of all soft model predictions. 
+
+    Args:
+        final_composite (np.ndarray): The concatenated focal loss composite image.
+        ground_truth_tensor (torch.Tensor): The ground truth label tensor.
+        prediction_tensor (torch.Tensor): The raw prediction logit tensor.
+        save_visualization (bool): Flag indicating whether saving should be performed.
+        experiment_folder (str): The folder path where the images should be saved.
+    """
     if save_visualization:
         if experiment_folder:
             os.makedirs(name=experiment_folder, exist_ok=True)
@@ -385,7 +412,7 @@ def export_focal_loss_visualization(parameter_dictionary: Dict[str, Dict[str, fl
 
         for index in range(1, ground_truth_tensor.shape[1]):
             class_mask = ground_truth_tensor[0, index].detach().cpu().numpy()
-            color = GROUND_TRUTH_COLORS[(index - 1) % len(GROUND_TRUTH_COLORS)]
+            color = OBJECT_COLORS[(index - 1) % len(OBJECT_COLORS)]
             colored_ground_truth[class_mask == 1.0] = color
 
         if experiment_folder:
@@ -394,6 +421,26 @@ def export_focal_loss_visualization(parameter_dictionary: Dict[str, Dict[str, fl
             ground_truth_save_path = "ground_truth_image.png"
 
         cv2.imwrite(filename=ground_truth_save_path, img=colored_ground_truth)
+
+        # Generate and save colored prediction composite image
+        colored_prediction = np.zeros(shape=(height, width, 3), dtype=np.float32)
+
+        for index in range(1, prediction_tensor.shape[1]):
+            probability_mask = torch.sigmoid(input=prediction_tensor[0, index]).detach().cpu().numpy()
+            color = OBJECT_COLORS[(index - 1) % len(OBJECT_COLORS)]
+            
+            colored_prediction[:, :, 0] += probability_mask * color[0]
+            colored_prediction[:, :, 1] += probability_mask * color[1]
+            colored_prediction[:, :, 2] += probability_mask * color[2]
+
+        colored_prediction = np.clip(a=colored_prediction, a_min=0.0, a_max=255.0).astype(dtype=np.uint8)
+
+        if experiment_folder:
+            prediction_save_path = os.path.join(experiment_folder, "prediction_image.png")
+        else:
+            prediction_save_path = "prediction_image.png"
+
+        cv2.imwrite(filename=prediction_save_path, img=colored_prediction)
 
 
 def compute_class_probabilities(parameter_dictionary: Dict[str, Dict[str, float]], background_logit: float,
