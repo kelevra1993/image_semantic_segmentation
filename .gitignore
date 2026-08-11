@@ -21,3 +21,6 @@ ultrasound_dataset/
 
 # Model data
 experiments_folder/
+
+# Experiments data
+experiments/

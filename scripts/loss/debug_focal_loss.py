@@ -120,14 +120,17 @@ if __name__ == "__main__":
         "ellipse": {"left_logit": 2.8, "right_logit": 1.0, "alpha": 1.0}}
 
     experimental_parameters = {
-        "experiment_1": {"alpha": {"circle": 1.0, "square": 1.0, "pentagon": 1.0, "ellipse": 1.0}, "gamma": 0.5},
-        "experiment_2": {"alpha": {"circle": 1.0, "square": 1.0, "pentagon": 1.0, "ellipse": 1.0}, "gamma": 0.5},
+        "experiment_1": {"alpha": {"circle": 1.0, "square": 1.0, "pentagon": 1.0, "ellipse": 1.0}, "gamma": 0.0},
+        "experiment_2": {"alpha": {"circle": 1.0, "square": 2.0, "pentagon": 1.0, "ellipse": 1.0}, "gamma": 0.0},
         "experiment_3": {"alpha": {"circle": 1.0, "square": 1.0, "pentagon": 1.0, "ellipse": 1.0}, "gamma": 0.5},
-        "experiment_4": {"alpha": {"circle": 1.0, "square": 1.0, "pentagon": 1.0, "ellipse": 1.0}, "gamma": 0.5},
-        "experiment_5": {"alpha": {"circle": 1.0, "square": 1.0, "pentagon": 1.0, "ellipse": 1.0}, "gamma": 0.5}}
-
+        "experiment_4": {"alpha": {"circle": 1.0, "square": 1.0, "pentagon": 1.0, "ellipse": 1.0}, "gamma": 0.75},
+        "experiment_5": {"alpha": {"circle": 1.0, "square": 1.0, "pentagon": 1.0, "ellipse": 1.0}, "gamma": 1.0},
+        "experiment_6": {"alpha": {"circle": 1.0, "square": 1.0, "pentagon": 1.0, "ellipse": 1.0}, "gamma": 2.0},
+        "experiment_7": {"alpha": {"circle": 1.0, "square": 1.0, "pentagon": 1.0, "ellipse": 1.0}, "gamma": 4.0},
+    }
     # Dataframe that will contain all the different experiments that will be ran.
     experiments_dataframe = pd.DataFrame()
+    main_experimental_folder = "experiments"
 
     for experiment_name, experiment_information in experimental_parameters.items():
         # Update test_parameter_dictionary with alphas for this experiment
@@ -147,7 +150,8 @@ if __name__ == "__main__":
                                                 batch_size=test_batch_size,
                                                 alpha=test_alpha, gamma=test_gamma,
                                                 save_experiment=True,
-                                                experiment_folder=os.path.join("experiments", experiment_name))
+                                                experiment_folder=os.path.join(main_experimental_folder,
+                                                                               experiment_name))
 
         # Add the experiment identifier as the first column
         experiment_dataframe.insert(loc=0, column="experiment", value=experiment_name)
@@ -155,3 +159,7 @@ if __name__ == "__main__":
 
     print_yellow("All experiments finished.")
     print(experiments_dataframe.to_string(justify='center'))
+
+    # Save all experiments into one pandas dataframe.
+    experiments_csv_path = os.path.join(main_experimental_folder, "focal_loss_experiments.csv")
+    experiments_dataframe.to_csv(path_or_buf=experiments_csv_path, index=False)
