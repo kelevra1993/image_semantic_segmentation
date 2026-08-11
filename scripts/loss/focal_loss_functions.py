@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 import math
 import pandas as pd
-from typing import Tuple, Dict
+from typing import Tuple, Dict, Any
 from app.utilities.os_utilities import print_yellow
 
 
@@ -89,7 +89,7 @@ def create_pentagon_data(quadrant_width: int, quadrant_height: int, left_logit: 
     """
     ground_truth_numpy_array = np.zeros((quadrant_height, quadrant_width), dtype=np.uint8)
     pentagon_center_x, pentagon_center_y = quadrant_width // 2, quadrant_height // 2
-    pentagon_radius = min(quadrant_width, quadrant_height) // 5
+    pentagon_radius = min(quadrant_width, quadrant_height) // 4
 
     pentagon_points = []
     for i in range(5):
@@ -145,14 +145,15 @@ def create_ellipse_data(quadrant_width: int, quadrant_height: int, left_logit: f
 
 def create_input_data(image_size: Tuple[int, int], background_logit: float,
                       logit_dictionary: Dict[str, Dict[str, float]], inactive_logit: float = -20.0,
-                      number_of_classes: int = 5, batch_size: int = 1, verbose:bool =False) -> Tuple[
-    torch.Tensor, torch.Tensor, Dict[str, Dict[str, Tuple[int, int]]]]:
+                      number_of_classes: int = 5, batch_size: int = 1,
+                      verbose: bool = False) -> Tuple[torch.Tensor, torch.Tensor, Dict[str, Dict[str, Any]]]:
     """
+    todo add verbose
     Generates synthetic ground truth masks and corresponding prediction logits for focal loss verification.
     
     This function creates a controlled 5-channel tensor environment (background + 4 geometric shapes) 
     that serves as the fundamental testing data for the downstream focal loss module. By systematically 
-    splitting each object into a 'left' and 'right' logit region, it allows the MLOps pipeline to 
+    splitting each object into a 'left' and 'right' logit region, it allows the training pipeline to 
     simulate varying degrees of class imbalance and prediction confidence. It also computes the exact 
     pixel coordinates for these regions, which are subsequently used by debugging dashboards to extract 
     and monitor specific loss metrics.
@@ -178,29 +179,34 @@ def create_input_data(image_size: Tuple[int, int], background_logit: float,
         Tuple[torch.Tensor, torch.Tensor, Dict[str, Dict[str, Tuple[int, int]]]]: A tuple containing:
             - The ground truth tensor of shape (batch_size, number_of_classes, height, width).
             - The prediction tensor of shape (batch_size, number_of_classes, height, width).
-            - A dictionary of spatial sampling positions for the left and right halves of each object.
+            - A dictionary of spatial sampling positions and non-zero pixels for each object.
     """
 
     image_height, image_width = image_size
     quadrant_height, quadrant_width = image_height // 2, image_width // 2
 
     mid_quadrant_height = quadrant_height // 2
-    quarter_quadrant_width = quadrant_width // 4
+    one_third_quadrant_width = quadrant_width // 3
+    two_thirds_quadrant_width = 2 * quadrant_width // 3
 
-    three_quarter_quadrant_width = 3 * quadrant_width // 4
-
-    positions = {
-        "circle": {"left": (mid_quadrant_height, quarter_quadrant_width),
-                   "right": (mid_quadrant_height, three_quarter_quadrant_width)},
-        "square": {"left": (mid_quadrant_height, quadrant_width + quarter_quadrant_width),
-                   "right": (mid_quadrant_height, quadrant_width + three_quarter_quadrant_width)},
-        "pentagon": {"left": (quadrant_height + mid_quadrant_height, quarter_quadrant_width),
-                     "right": (quadrant_height + mid_quadrant_height, three_quarter_quadrant_width)},
-        "ellipse": {"left": (quadrant_height + mid_quadrant_height, quadrant_width + quarter_quadrant_width),
-                    "right": (quadrant_height + mid_quadrant_height, quadrant_width + three_quarter_quadrant_width)}}
+    object_information = {
+        "circle": {
+            "positions": {"left": (mid_quadrant_height, one_third_quadrant_width),
+                          "right": (mid_quadrant_height, two_thirds_quadrant_width)}},
+        "square": {
+            "positions": {"left": (mid_quadrant_height, quadrant_width + one_third_quadrant_width),
+                          "right": (mid_quadrant_height, quadrant_width + two_thirds_quadrant_width)}},
+        "pentagon": {
+            "positions": {"left": (quadrant_height + mid_quadrant_height, one_third_quadrant_width),
+                          "right": (quadrant_height + mid_quadrant_height, two_thirds_quadrant_width)}},
+        "ellipse": {
+            "positions": {"left": (quadrant_height + mid_quadrant_height, quadrant_width + one_third_quadrant_width),
+                          "right": (quadrant_height + mid_quadrant_height, quadrant_width + two_thirds_quadrant_width)}}
+    }
 
     ground_truth_tensor = torch.zeros((batch_size, number_of_classes, image_height, image_width), dtype=torch.float32)
-    prediction_tensor = torch.full((batch_size, number_of_classes, image_height, image_width), inactive_logit,
+    prediction_tensor = torch.full(size=(batch_size, number_of_classes, image_height, image_width),
+                                   fill_value=inactive_logit,
                                    dtype=torch.float32)
 
     # 0. Background
@@ -209,10 +215,13 @@ def create_input_data(image_size: Tuple[int, int], background_logit: float,
     # 1. Circle (Top-Left)
     circle_left = logit_dictionary["circle"]["left_logit"]
     circle_right = logit_dictionary["circle"]["right_logit"]
-    circle_ground_truth, circle_prediction = create_circle_data(quadrant_width, quadrant_height, circle_left,
-                                                                circle_right, inactive_logit)
-    if verbose:
-        print_non_zero_pixels(circle_ground_truth, "circle")
+    circle_ground_truth, circle_prediction = create_circle_data(quadrant_width,
+                                                                quadrant_height,
+                                                                circle_left,
+                                                                circle_right,
+                                                                inactive_logit)
+    object_information["circle"]["non_zero_pixels"] = compute_non_zero_pixels(numpy_array=circle_ground_truth,
+                                                                              name="circle", verbose=verbose)
 
     ground_truth_tensor[0, 1, 0:quadrant_height, 0:quadrant_width] = torch.from_numpy(circle_ground_truth)
     prediction_tensor[0, 1, 0:quadrant_height, 0:quadrant_width] = torch.from_numpy(circle_prediction)
@@ -220,30 +229,39 @@ def create_input_data(image_size: Tuple[int, int], background_logit: float,
     # 2. Square (Top-Right)
     square_left = logit_dictionary["square"]["left_logit"]
     square_right = logit_dictionary["square"]["right_logit"]
-    square_ground_truth, square_prediction = create_square_data(quadrant_width, quadrant_height, square_left,
-                                                                square_right, inactive_logit)
-    if verbose:
-        print_non_zero_pixels(square_ground_truth, "square")
+    square_ground_truth, square_prediction = create_square_data(quadrant_width,
+                                                                quadrant_height,
+                                                                square_left,
+                                                                square_right,
+                                                                inactive_logit)
+    object_information["square"]["non_zero_pixels"] = compute_non_zero_pixels(numpy_array=square_ground_truth,
+                                                                              name="square", verbose=verbose)
     ground_truth_tensor[0, 2, 0:quadrant_height, quadrant_width:image_width] = torch.from_numpy(square_ground_truth)
     prediction_tensor[0, 2, 0:quadrant_height, quadrant_width:image_width] = torch.from_numpy(square_prediction)
 
     # 3. Pentagon (Bottom-Left)
     pentagon_left = logit_dictionary["pentagon"]["left_logit"]
     pentagon_right = logit_dictionary["pentagon"]["right_logit"]
-    pentagon_ground_truth, pentagon_prediction = create_pentagon_data(quadrant_width, quadrant_height, pentagon_left,
-                                                                      pentagon_right, inactive_logit)
-    if verbose:
-        print_non_zero_pixels(pentagon_ground_truth, "pentagon")
+    pentagon_ground_truth, pentagon_prediction = create_pentagon_data(quadrant_width,
+                                                                      quadrant_height,
+                                                                      pentagon_left,
+                                                                      pentagon_right,
+                                                                      inactive_logit)
+    object_information["pentagon"]["non_zero_pixels"] = compute_non_zero_pixels(numpy_array=pentagon_ground_truth,
+                                                                                name="pentagon", verbose=verbose)
     ground_truth_tensor[0, 3, quadrant_height:image_height, 0:quadrant_width] = torch.from_numpy(pentagon_ground_truth)
     prediction_tensor[0, 3, quadrant_height:image_height, 0:quadrant_width] = torch.from_numpy(pentagon_prediction)
 
     # 4. Ellipse (Bottom-Right)
     ellipse_left = logit_dictionary["ellipse"]["left_logit"]
     ellipse_right = logit_dictionary["ellipse"]["right_logit"]
-    ellipse_ground_truth, ellipse_prediction = create_ellipse_data(quadrant_width, quadrant_height, ellipse_left,
-                                                                   ellipse_right, inactive_logit)
-    if verbose:
-        print_non_zero_pixels(ellipse_ground_truth, "ellipse")
+    ellipse_ground_truth, ellipse_prediction = create_ellipse_data(quadrant_width,
+                                                                   quadrant_height,
+                                                                   ellipse_left,
+                                                                   ellipse_right,
+                                                                   inactive_logit)
+    object_information["ellipse"]["non_zero_pixels"] = compute_non_zero_pixels(numpy_array=ellipse_ground_truth,
+                                                                               name="ellipse", verbose=verbose)
     ground_truth_tensor[0, 4, quadrant_height:image_height, quadrant_width:image_width] = torch.from_numpy(
         ellipse_ground_truth)
     prediction_tensor[0, 4, quadrant_height:image_height, quadrant_width:image_width] = torch.from_numpy(
@@ -252,32 +270,42 @@ def create_input_data(image_size: Tuple[int, int], background_logit: float,
     # Background Ground Truth (Where all other classes are 0)
     foreground_sum = torch.sum(ground_truth_tensor[0, 1:, :, :], dim=0)
     ground_truth_tensor[0, 0, :, :] = 1.0 - foreground_sum
-    print_non_zero_pixels(ground_truth_tensor[0, 0, :, :].numpy(), "background")
+    compute_non_zero_pixels(numpy_array=ground_truth_tensor[0, 0, :, :].numpy(), name="background", verbose=verbose)
 
-    return ground_truth_tensor, prediction_tensor, positions
+    return ground_truth_tensor, prediction_tensor, object_information
 
 
-def print_non_zero_pixels(numpy_array: np.ndarray, name: str) -> None:
+def compute_non_zero_pixels(numpy_array: np.ndarray, name: str, verbose: bool = False) -> int:
     """
-    Counts and prints the number of non-zero pixels in a given numpy array.
+    Computes the exact number of non-zero pixels representing foreground objects within the synthetic masks.
+    This serves as the normalization factor for the downstream focal loss calculation,
+     ensuring proper loss scaling across variably sized geometries.
     
     Args:
         numpy_array (np.ndarray): The array or mask to be evaluated.
         name (str): The descriptive name of the object or class being evaluated.
+        verbose (bool): If True, prints the count.
+        
+    Returns:
+        int: The number of non-zero pixels.
     """
-    non_zero_count = np.count_nonzero(numpy_array)
-    print(f"We Have {non_zero_count} Non Zero Pixels for {name}")
+    non_zero_count = int(np.count_nonzero(numpy_array))
+    if verbose:
+        print(f"We Have {non_zero_count} Non Zero Pixels for {name}")
+    return non_zero_count
 
 
 def visualize_focal_loss(parameter_dictionary: Dict[str, Dict[str, float]], window_size: int, spacing_x: int,
                          spacing_y: int, focal_loss_class_image: torch.Tensor, ground_truth_tensor: torch.Tensor,
-                         prediction_tensor: torch.Tensor) -> None:
+                         prediction_tensor: torch.Tensor,
+                         object_information: Dict[str, Dict[str, Any]]) -> None:
     """
     Visualizes the focal loss components using OpenCV windows.
 
     This function isolates the visualization logic, creating a grid of OpenCV windows
     to display the model prediction, ground truth mask, and focal loss image for each
-    class, scaled appropriately for display.
+    class, scaled appropriately for display. It also plots green and red points on the
+    model prediction image to indicate the sampling locations for the left and right sides.
 
     Args:
         parameter_dictionary (Dict[str, Dict[str, float]]): The dictionary of class logits.
@@ -287,9 +315,20 @@ def visualize_focal_loss(parameter_dictionary: Dict[str, Dict[str, float]], wind
         focal_loss_class_image (torch.Tensor): The normalized focal loss image tensor.
         ground_truth_tensor (torch.Tensor): The ground truth label tensor.
         prediction_tensor (torch.Tensor): The raw prediction logit tensor.
+        object_information (Dict[str, Dict[str, Any]]): Pixel coordinates and metadata to sample the focal loss.
     """
     for index, object_class in enumerate(parameter_dictionary, start=1):
         index_model_predictions = torch.sigmoid(prediction_tensor[0, index])
+        prediction_image = cv2.cvtColor(index_model_predictions.detach().cpu().numpy(), cv2.COLOR_GRAY2BGR)
+
+        left_position = object_information[object_class]["positions"]["left"]
+        right_position = object_information[object_class]["positions"]["right"]
+
+        # Draw green point for left and red point for right (BGR format)
+        cv2.circle(img=prediction_image, center=(left_position[1], left_position[0]), radius=3, color=(0.0, 1.0, 0.0),
+                   thickness=-1)
+        cv2.circle(img=prediction_image, center=(right_position[1], right_position[0]), radius=3, color=(0.0, 0.0, 1.0),
+                   thickness=-1)
 
         # Calculate X and Y positions
         column_0_x = spacing_x
@@ -301,7 +340,7 @@ def visualize_focal_loss(parameter_dictionary: Dict[str, Dict[str, float]], wind
         prediction_name = f"Model Prediction - {object_class}"
         cv2.namedWindow(prediction_name, cv2.WINDOW_NORMAL)
         cv2.resizeWindow(prediction_name, window_size, window_size)
-        cv2.imshow(prediction_name, index_model_predictions.detach().cpu().numpy())
+        cv2.imshow(prediction_name, prediction_image)
         cv2.moveWindow(prediction_name, column_1_x, row_y)
 
         # 2. Ground Truth Window
@@ -383,19 +422,19 @@ def print_class_probabilities(probabilities: Dict[str, Dict[str, float]], length
 
 def create_focal_loss_dataframe(probabilities: Dict[str, Dict[str, float]],
                                 focal_loss_image: torch.Tensor,
-                                positions: Dict[str, Dict[str, Tuple[int, int]]]) -> pd.DataFrame:
+                                object_information: Dict[str, Dict[str, Any]]) -> pd.DataFrame:
     """
     Constructs a Pandas DataFrame aggregating regional probabilities alongside standard and focal losses.
 
     This function extracts loss metrics from the computed focal loss map and standard cross-entropy 
     formulation to provide a structured tabular format. This tabular data is consumed by downstream 
-    MLOps visualization services and debugging dashboards to monitor class-imbalance mitigations 
+    visualization services and debugging dashboards to monitor class-imbalance mitigations 
     and verify that the focal loss correctly down-weights well-classified examples.
     
     Args:
         probabilities (Dict[str, Dict[str, float]]): The dictionary of class probabilities.
         focal_loss_image (torch.Tensor): The computed focal loss tensor.
-        positions (Dict[str, Dict[str, Tuple[int, int]]]): Pixel coordinates to sample the focal loss.
+        object_information (Dict[str, Dict[str, Any]]): Pixel coordinates and metadata to sample the focal loss.
             
     Returns:
         pd.DataFrame: A DataFrame containing the required loss metrics.
@@ -409,8 +448,9 @@ def create_focal_loss_dataframe(probabilities: Dict[str, Dict[str, float]],
         loss_left = -math.log(max(softmax_left, 1e-10))
         loss_right = -math.log(max(softmax_right, 1e-10))
 
-        left_position = positions[object_class]["left"]
-        right_position = positions[object_class]["right"]
+        left_position = object_information[object_class]["positions"]["left"]
+        right_position = object_information[object_class]["positions"]["right"]
+        non_zero_pixels = object_information[object_class]["non_zero_pixels"]
 
         focal_loss_left = focal_loss_image[0, left_position[0], left_position[1]].item()
         focal_loss_right = focal_loss_image[0, right_position[0], right_position[1]].item()
@@ -420,6 +460,7 @@ def create_focal_loss_dataframe(probabilities: Dict[str, Dict[str, float]],
                           "softmax_right": softmax_right,
                           "loss_left": loss_left,
                           "loss_right": loss_right,
+                          "normalisation_factor": non_zero_pixels,
                           "focal_loss_left": focal_loss_left,
                           "focal_loss_right": focal_loss_right})
 

@@ -62,7 +62,7 @@ def print_tensor_min_max(tensor: torch.Tensor, name: Optional[str] = "") -> None
     Logs the minimum and maximum values of a tensor to the console.
 
     This utility is crucial for debugging potential exploding or vanishing gradients and
-    verifying normalization steps within the MLOps pipeline, ensuring tensor values remain
+    verifying normalization steps within the processing pipeline, ensuring tensor values remain
     within expected mathematical bounds.
 
     Args:

@@ -190,7 +190,7 @@ class Trainer:
         
         This function iterates through the dataset for a specified number of iterations without
         running a full training epoch. It is primarily used to isolate and measure the raw
-        performance of the forward/backward passes and data loading bottleneck within the MLOps pipeline.
+        performance of the forward/backward passes and data loading bottleneck within the training pipeline.
     
         Args:
             benchmarking_iterations (int): The total number of iterations to run the benchmark. Defaults to 100,000.

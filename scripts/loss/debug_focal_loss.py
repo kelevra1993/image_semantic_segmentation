@@ -46,12 +46,14 @@ def debug_focal_loss(parameter_dictionary: Dict[str, Dict[str, float]],
         length_separator (int): The number of characters to use for the visual separator.
     """
     # Generate Data containing our object divided into two regions.
-    ground_truth_tensor, prediction_tensor, positions = create_input_data(image_size=image_size,
-                                                                          background_logit=background_logit,
-                                                                          logit_dictionary=parameter_dictionary,
-                                                                          inactive_logit=inactive_logit,
-                                                                          number_of_classes=number_classes,
-                                                                          batch_size=batch_size)
+    ground_truth_tensor, prediction_tensor, object_information = create_input_data(
+        image_size=image_size,
+        background_logit=background_logit,
+        logit_dictionary=parameter_dictionary,
+        inactive_logit=inactive_logit,
+        number_of_classes=number_classes,
+        batch_size=batch_size,
+        verbose=True)
 
     # Initialize FocalLoss
     device = torch.device('cpu')
@@ -61,10 +63,13 @@ def debug_focal_loss(parameter_dictionary: Dict[str, Dict[str, float]],
                                   parameter_dictionary["square"]["alpha"],
                                   parameter_dictionary["pentagon"]["alpha"],
                                   parameter_dictionary["ellipse"]["alpha"]],
-                           gamma=0.50, device=device, dtype=torch.float32)
+                           gamma=0.0, device=device, dtype=torch.float32)
 
     # Compute Loss
-    loss, focal_loss_image = focal_loss(prediction_tensor, ground_truth_tensor)
+    loss, focal_loss_image, focal_loss_numerator, focal_loss_denominator = focal_loss(prediction_tensor,
+                                                                                      ground_truth_tensor)
+
+    print_tensor_status(focal_loss_numerator)
 
     # Globally min-max normalize the image
     focal_min, focal_max = focal_loss_image[0].min(), focal_loss_image[0].max()
@@ -78,15 +83,23 @@ def debug_focal_loss(parameter_dictionary: Dict[str, Dict[str, float]],
     # Generate and print dataframe
     focal_loss_dataframe = create_focal_loss_dataframe(probabilities=probabilities,
                                                        focal_loss_image=focal_loss_image,
-                                                       positions=positions)
+                                                       object_information=object_information)
 
     print(focal_loss_dataframe.to_string())
+
+    focal_loss_numerator_dataframe = create_focal_loss_dataframe(probabilities=probabilities,
+                                                                 focal_loss_image=focal_loss_numerator,
+                                                                 object_information=object_information)
+
+    print(focal_loss_numerator_dataframe.to_string())
+    print(torch.unique(focal_loss_denominator))
 
     # Get visualization Of Focal Loss
     visualize_focal_loss(parameter_dictionary=parameter_dictionary,
                          window_size=window_size, spacing_x=spacing_x, spacing_y=spacing_y,
                          focal_loss_class_image=focal_loss_class_image,
-                         ground_truth_tensor=ground_truth_tensor, prediction_tensor=prediction_tensor)
+                         ground_truth_tensor=ground_truth_tensor, prediction_tensor=prediction_tensor,
+                         object_information=object_information)
 
 
 if __name__ == "__main__":
