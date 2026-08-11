@@ -455,10 +455,10 @@ def create_focal_loss_dataframe(parameter_dictionary: Dict[str, Dict[str, float]
         loss_ratio = loss_right / loss_left if loss_left != 0 else float('inf')
         focal_loss_ratio = focal_loss_right / focal_loss_left if focal_loss_left != 0 else float('inf')
 
-        unnormalised_focal_loss_left = focal_loss_left * non_zero_pixels
-        unnormalised_focal_loss_right = focal_loss_right * non_zero_pixels
-        unnormalised_focal_loss_ratio = unnormalised_focal_loss_right / unnormalised_focal_loss_left if \
-            unnormalised_focal_loss_left != 0 else float('inf')
+        scaled_focal_loss_left = focal_loss_left * non_zero_pixels
+        scaled_focal_loss_right = focal_loss_right * non_zero_pixels
+        scaled_focal_loss_ratio = scaled_focal_loss_right / scaled_focal_loss_left if \
+            scaled_focal_loss_left != 0 else float('inf')
 
         data_list.append({"object_class": object_class,
                           "alpha": alpha_value,
@@ -467,14 +467,14 @@ def create_focal_loss_dataframe(parameter_dictionary: Dict[str, Dict[str, float]
                           "softmax_right": softmax_right,
                           "loss_left": loss_left,
                           "loss_right": loss_right,
-                          "loss_right_over_left_ratio": loss_ratio,
-                          "normalisation_factor": non_zero_pixels,
-                          "focal_loss_left": focal_loss_left,
-                          "focal_loss_right": focal_loss_right,
-                          "focal_loss_right_over_left_ratio": focal_loss_ratio,
-                          "unnormalised_focal_loss_left": unnormalised_focal_loss_left,
-                          "unnormalised_focal_loss_right": unnormalised_focal_loss_right,
-                          "unnormalised_focal_loss_right_over_left_ratio": unnormalised_focal_loss_ratio})
+                          "loss_RL_ratio": loss_ratio,
+                          "scaler": non_zero_pixels,
+                          "FL_left": focal_loss_left,
+                          "FL_right": focal_loss_right,
+                          "FL_RL_ratio": focal_loss_ratio,
+                          "scaled_FL_left": scaled_focal_loss_left,
+                          "scaled_FL_right": scaled_focal_loss_right,
+                          "scaled_FL_RL_ratio": scaled_focal_loss_ratio})
 
     focal_loss_dataframe = pd.DataFrame(data=data_list)
 

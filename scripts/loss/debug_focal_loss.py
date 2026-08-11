@@ -120,13 +120,13 @@ if __name__ == "__main__":
         "ellipse": {"left_logit": 2.8, "right_logit": 1.0, "alpha": 1.0}}
 
     experimental_parameters = {
-        "experiment_1": {"alpha": {"circle": 1.0, "square": 1.0, "pentagon": 1.0, "ellipse": 1.0}, "gamma": 0.0},
-        "experiment_2": {"alpha": {"circle": 1.0, "square": 2.0, "pentagon": 1.0, "ellipse": 1.0}, "gamma": 0.0},
-        "experiment_3": {"alpha": {"circle": 1.0, "square": 1.0, "pentagon": 1.0, "ellipse": 1.0}, "gamma": 0.5},
-        "experiment_4": {"alpha": {"circle": 1.0, "square": 1.0, "pentagon": 1.0, "ellipse": 1.0}, "gamma": 0.75},
-        "experiment_5": {"alpha": {"circle": 1.0, "square": 1.0, "pentagon": 1.0, "ellipse": 1.0}, "gamma": 1.0},
-        "experiment_6": {"alpha": {"circle": 1.0, "square": 1.0, "pentagon": 1.0, "ellipse": 1.0}, "gamma": 2.0},
-        "experiment_7": {"alpha": {"circle": 1.0, "square": 1.0, "pentagon": 1.0, "ellipse": 1.0}, "gamma": 4.0},
+        "1": {"alpha": {"circle": 1.0, "square": 1.0, "pentagon": 1.0, "ellipse": 1.0}, "gamma": 0.0},
+        "2": {"alpha": {"circle": 1.0, "square": 2.0, "pentagon": 1.0, "ellipse": 1.0}, "gamma": 0.0},
+        "3": {"alpha": {"circle": 1.0, "square": 1.0, "pentagon": 1.0, "ellipse": 1.0}, "gamma": 0.5},
+        "4": {"alpha": {"circle": 1.0, "square": 1.0, "pentagon": 1.0, "ellipse": 1.0}, "gamma": 0.75},
+        "5": {"alpha": {"circle": 1.0, "square": 1.0, "pentagon": 1.0, "ellipse": 1.0}, "gamma": 1.0},
+        "6": {"alpha": {"circle": 1.0, "square": 1.0, "pentagon": 1.0, "ellipse": 1.0}, "gamma": 2.0},
+        "7": {"alpha": {"circle": 1.0, "square": 1.0, "pentagon": 1.0, "ellipse": 1.0}, "gamma": 4.0},
     }
     # Dataframe that will contain all the different experiments that will be ran.
     experiments_dataframe = pd.DataFrame()
