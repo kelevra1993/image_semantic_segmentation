@@ -93,22 +93,26 @@ def debug_focal_loss(parameter_dictionary: Dict[str, Dict[str, float]],
 
 
 if __name__ == "__main__":
-    # Definition of logits for left and right part of our masked objects.
+    # Visualisation parameters that are always constant
+    # Definition of visualizers
+    test_window_size = 200
+    test_image_size = (test_window_size, test_window_size)
+    test_number_classes = 5
+    test_batch_size = 1
+    test_spacing_x = 80
+    test_spacing_y = 60
+
+    # Additional constant values accross experiments
+    test_background_logit = 0.8
+    test_inactive_logit = -10.0
+
+    # Experiment parameters
+    # Definition of logits for left and right part of our masked objects as well as alphas and gammas
     test_parameter_dictionary = {
         "circle": {"left_logit": 2.8, "right_logit": 1.0, "alpha": 1.0},
         "square": {"left_logit": 2.8, "right_logit": 1.0, "alpha": 1.0},
         "pentagon": {"left_logit": 1.0, "right_logit": 5.0, "alpha": 1.0},
         "ellipse": {"left_logit": 2.8, "right_logit": 1.0, "alpha": 1.0}}
-
-    # Definition of visualizers
-    test_window_size = 200
-    test_image_size = (test_window_size, test_window_size)
-    test_background_logit = 0.8
-    test_inactive_logit = -10.0
-    test_number_classes = 5
-    test_batch_size = 1
-    test_spacing_x = 80
-    test_spacing_y = 60
     test_alpha = [1.0] + [test_parameter_dictionary[key]["alpha"] for key in test_parameter_dictionary]
     test_gamma = 0.5
 
