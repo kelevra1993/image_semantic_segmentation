@@ -130,10 +130,11 @@ if __name__ == "__main__":
 
         # Third Comparison : Gradually Scaling up gamma
         "5": {"alpha": {"circle": 1.0, "square": 1.0, "pentagon": 1.0, "ellipse": 1.0}, "gamma": 0.5},
-        "6": {"alpha": {"circle": 1.0, "square": 1.0, "pentagon": 1.0, "ellipse": 1.0}, "gamma": 1.0},
-        "7": {"alpha": {"circle": 1.0, "square": 1.0, "pentagon": 1.0, "ellipse": 1.0}, "gamma": 2.0},
-        "8": {"alpha": {"circle": 1.0, "square": 1.0, "pentagon": 1.0, "ellipse": 1.0}, "gamma": 4.0},
-        "9": {"alpha": {"circle": 1.0, "square": 1.0, "pentagon": 1.0, "ellipse": 1.0}, "gamma": 4.0},
+        "6": {"alpha": {"circle": 1.0, "square": 1.0, "pentagon": 1.0, "ellipse": 1.0}, "gamma": 0.75},
+        "7": {"alpha": {"circle": 1.0, "square": 1.0, "pentagon": 1.0, "ellipse": 1.0}, "gamma": 1.0},
+        "8": {"alpha": {"circle": 1.0, "square": 1.0, "pentagon": 1.0, "ellipse": 1.0}, "gamma": 1.5},
+        "9": {"alpha": {"circle": 1.0, "square": 1.0, "pentagon": 1.0, "ellipse": 1.0}, "gamma": 2.0},
+        "10": {"alpha": {"circle": 1.0, "square": 1.0, "pentagon": 1.0, "ellipse": 1.0}, "gamma": 4.0},
     }
     # Dataframe that will contain all the different experiments that will be ran.
     experiments_dataframe = pd.DataFrame()
