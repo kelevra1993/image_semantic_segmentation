@@ -9,11 +9,11 @@ from typing import Tuple, Dict, Any, List
 from app.utilities.os_utilities import print_yellow
 
 OBJECT_COLORS = [
-    (255, 0, 0),    # Blue
-    (0, 255, 0),    # Green
-    (0, 0, 255),    # Red
+    (255, 0, 0),  # Blue
+    (0, 255, 0),  # Green
+    (0, 0, 255),  # Red
     (255, 255, 0),  # Cyan
-    (255, 0, 255)   # Magenta
+    (255, 0, 255)  # Magenta
 ]
 
 # Suppress scientific notation in Pandas output
@@ -361,12 +361,14 @@ def export_focal_loss_visualization(parameter_dictionary: Dict[str, Dict[str, fl
         # Concatenate horizontally (Ground Truth, Prediction, Focal Loss)
         row_images = [ground_truth_image, prediction_image, focal_loss_image_bgr]
         horizontal_image_concatenation = concatenate_image_list(list_of_images=row_images,
-                                                                concatenation_orientation='horizontal')
+                                                                concatenation_orientation='horizontal',
+                                                                small_separator=2)
         vertical_list.append(horizontal_image_concatenation)
 
     # Concatenate all rows vertically
     final_composite = concatenate_image_list(list_of_images=vertical_list,
-                                             concatenation_orientation='vertical')
+                                             concatenation_orientation='vertical',
+                                             small_separator=2)
 
     # Save the visualizations
     save_visualisations(final_composite=final_composite,
@@ -428,7 +430,7 @@ def save_visualisations(final_composite: np.ndarray,
         for index in range(1, prediction_tensor.shape[1]):
             probability_mask = torch.sigmoid(input=prediction_tensor[0, index]).detach().cpu().numpy()
             color = OBJECT_COLORS[(index - 1) % len(OBJECT_COLORS)]
-            
+
             colored_prediction[:, :, 0] += probability_mask * color[0]
             colored_prediction[:, :, 1] += probability_mask * color[1]
             colored_prediction[:, :, 2] += probability_mask * color[2]
@@ -556,7 +558,9 @@ def create_focal_loss_dataframe(parameter_dictionary: Dict[str, Dict[str, float]
     return focal_loss_dataframe
 
 
-def concatenate_image_list(list_of_images: List[np.ndarray], concatenation_orientation: str) -> np.ndarray:
+def concatenate_image_list(list_of_images: List[np.ndarray],
+                           concatenation_orientation: str,
+                           small_separator: int = 0) -> np.ndarray:
     """
     Concatenates a list of images into a single composite layout for debugging visualization.
     
@@ -566,14 +570,60 @@ def concatenate_image_list(list_of_images: List[np.ndarray], concatenation_orien
     Args:
         list_of_images (List[np.ndarray]): A list containing the OpenCV images to be concatenated.
         concatenation_orientation (str): The axis of concatenation, either 'horizontal' or 'vertical'.
+        small_separator (int): The number of pixels to append as a white separator between images. Defaults to 0.
         
     Returns:
         np.ndarray: The concatenated composite image.
     """
+    # Create the separator layout only if multiple images are provided
+    if small_separator > 0 and len(list_of_images) > 1:
+        images_to_concatenate = []
+
+        # Extract dimensions from the first image to calculate the separator size
+        sample_image = list_of_images[0]
+        image_height = sample_image.shape[0]
+        image_width = sample_image.shape[1]
+
+        # Adjust the separator dimensions based on the presence of color channels
+        if len(sample_image.shape) > 2:
+            number_of_channels = sample_image.shape[2]
+            horizontal_shape = (image_height, small_separator, number_of_channels)
+            vertical_shape = (small_separator, image_width, number_of_channels)
+        else:
+            horizontal_shape = (image_height, small_separator)
+            vertical_shape = (small_separator, image_width)
+
+        # Store the native data type to properly instantiate the array background
+        image_type = sample_image.dtype
+
+        # Iteratively build the new list of images interleaved with separators
+        for index, image in enumerate(list_of_images):
+            images_to_concatenate.append(image)
+
+            # Add a separator if it's not the last image
+            if index < len(list_of_images) - 1:
+                # Generate horizontal separator strips
+                if concatenation_orientation == 'horizontal':
+                    if np.issubdtype(image_type, np.floating):
+                        separator_image = np.ones(shape=horizontal_shape, dtype=image_type)
+                    else:
+                        separator_image = np.full(shape=horizontal_shape, fill_value=255, dtype=image_type)
+                    images_to_concatenate.append(separator_image)
+                # Generate vertical separator strips
+                elif concatenation_orientation == 'vertical':
+                    if np.issubdtype(image_type, np.floating):
+                        separator_image = np.ones(shape=vertical_shape, dtype=image_type)
+                    else:
+                        separator_image = np.full(shape=vertical_shape, fill_value=255, dtype=image_type)
+                    images_to_concatenate.append(separator_image)
+    else:
+        images_to_concatenate = list_of_images
+
+    # Perform the final OpenCV concatenation along the requested axis
     if concatenation_orientation == 'horizontal':
-        composite_image = cv2.hconcat(list_of_images)
+        composite_image = cv2.hconcat(src=images_to_concatenate)
     elif concatenation_orientation == 'vertical':
-        composite_image = cv2.vconcat(list_of_images)
+        composite_image = cv2.vconcat(src=images_to_concatenate)
     else:
         raise ValueError("The argument concatenation_orientation must be 'horizontal' or 'vertical'.")
 
