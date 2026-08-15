@@ -3,7 +3,6 @@ import os.path
 import yaml
 import torch
 from pathlib import Path
-from shutil import copyfile
 
 from random import shuffle
 from typing import Dict, Any, Tuple
@@ -295,11 +294,5 @@ def load_experiment_configuration(configuration_path: str | Path) -> Tuple[Dict[
     if "dtype" in experiment_configuration:
         dtype_map = {"float32": torch.float32, "float64": torch.float64}
         experiment_configuration["dtype"] = dtype_map.get(experiment_configuration["dtype"], torch.float32)
-
-    # Set the project root and save a copy of the configuration file
-    # Save a copy of the configuration file
-    project_root = experiment_configuration["project_root"]
-    project_root.mkdir(parents=True, exist_ok=True)
-    copyfile(src=str(configuration_path), dst=str(project_root / "training_configuration.yaml"))
 
     return experiment_configuration, model_configuration

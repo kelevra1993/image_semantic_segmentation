@@ -23,7 +23,8 @@ def main() -> None:
 
     # Initialize Trainer
     trainer = Trainer(experiment_configuration=experiment_configuration,
-                      model_configuration=model_configuration)
+                      model_configuration=model_configuration,
+                      configuration_path=experiment_configuration_path)
 
     # Start training loop
     print(f"Starting Training For Experiment: {experiment_configuration['project_root']}...")

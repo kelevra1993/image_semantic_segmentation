@@ -30,14 +30,16 @@ class Trainer:
     and logging to TensorBoard.
     """
 
-    def __init__(self, experiment_configuration: Dict[str, Any], model_configuration: Dict[str, Any]) -> None:
+    def __init__(self, experiment_configuration: Dict[str, Any], model_configuration: Dict[str, Any], configuration_path: str | Path) -> None:
         """
         Initializes the Trainer with all necessary components for a training run.
 
         Args:
             experiment_configuration (Dict[str, Any]): Dictionary containing the core training parameters.
             model_configuration (Dict[str, Any]): Dictionary containing the model architecture parameters.
+            configuration_path (str | Path): The path to the configuration YAML file.
         """
+        self.configuration_path = Path(configuration_path)
         self.experiment_configuration = experiment_configuration
         self.model_configuration = model_configuration["UnetConfiguration"]
 
@@ -89,6 +91,32 @@ class Trainer:
         for label_name, index in self.experiment_configuration["label_dictionary"].items():
             self.tracked_metrics_mapping[f"iou_{label_name}"] = f"IoU {label_name.capitalize()}"
 
+        # Print experiment information to user so that they can know everything about the experiment.
+        self.print_experiment_information()
+        exit()
+    def print_experiment_information(self) -> None:
+        """
+        Prints out a summary of the experiment's configurations and paths to the console before training begins.
+        This function ensures that the user is aware of where important outputs (like Tensorboard logs and weights) 
+        and inputs (datasets) are located, providing clickable links to easily navigate the project structure.
+
+        Args:
+            None
+        """
+        dataset_path = Path(self.experiment_configuration["dataset_folder"])
+        
+        print_yellow("=== Experiment Launch Information ===", add_separators=True)
+        print_blue(f"- Tensorboard Directory : file://{self.tensorboard_directory.absolute()}")
+        print_blue(f"- Weights Directory     : file://{self.weights_directory.absolute()}")
+        print_blue(f"- Dataset Root Folder   : file://{dataset_path.absolute()}")
+        print_blue(f"- Train Dataset         : file://{(dataset_path / 'train_dataset.json').absolute()}")
+        print_blue(f"- Validation Dataset    : file://{(dataset_path / 'validation_dataset.json').absolute()}")
+        print_blue(f"- Test Dataset          : file://{(dataset_path / 'test_dataset.json').absolute()}")
+        print_blue(f"- Batch Size            : {self.batch_size}")
+        print_blue(f"- Total Iterations      : {self.training_iterations}")
+        print_blue(f"- Learning Rate         : {self.learning_rate}")
+        print_blue(f"- Resume Training       : {self.resume_training}")
+
     def setup_training_paths(self) -> tuple[Path, Path]:
         """
         Sets up the directory structure and persistent files for training outputs.
@@ -107,8 +135,13 @@ class Trainer:
         weights_directory = self.project_root / "Weights"
 
         # Create directories
+        self.project_root.mkdir(parents=True, exist_ok=True)
         tensorboard_directory.mkdir(exist_ok=True, parents=True)
         weights_directory.mkdir(exist_ok=True, parents=True)
+
+        # Save a copy of the configuration file
+        from shutil import copyfile
+        copyfile(src=str(self.configuration_path), dst=str(self.project_root / "training_configuration.yaml"))
 
         return tensorboard_directory, weights_directory
 
