@@ -31,7 +31,8 @@ class Trainer:
     and logging to TensorBoard.
     """
 
-    def __init__(self, experiment_configuration: Dict[str, Any], model_configuration: Dict[str, Any], configuration_path: str | Path) -> None:
+    def __init__(self, experiment_configuration: Dict[str, Any], model_configuration: Dict[str, Any],
+                 configuration_path: str | Path) -> None:
         """
         Initializes the Trainer with all necessary components for a training run.
 
@@ -40,7 +41,6 @@ class Trainer:
             model_configuration (Dict[str, Any]): Dictionary containing the model architecture parameters.
             configuration_path (str | Path): The path to the configuration YAML file.
         """
-        self.configuration_path = Path(configuration_path)
         self.experiment_configuration = experiment_configuration
         self.model_configuration = model_configuration["UnetConfiguration"]
 
@@ -61,8 +61,13 @@ class Trainer:
         self.resume_training = self.experiment_configuration["resume_training"]
 
         # Setup paths and tensorboard
-        self.tensorboard_directory, self.weights_directory = self.setup_training_paths()
-        self.training_writer, self.validation_writer = self.setup_tensorboard_writers()
+        self.tensorboard_directory, self.weights_directory, self.configuration_path = self.setup_training_paths(
+            initial_configuration_path=Path(configuration_path))
+
+        # We use lazy initialization for the tensorboard writers to avoid prematurely creating
+        # empty log files on disk during the Trainer instantiation.
+        self.training_writer = None
+        self.validation_writer = None
 
         # Setting up dataloaders
         self.dataset_folder = self.experiment_configuration["dataset_folder"]
@@ -94,7 +99,7 @@ class Trainer:
 
         # Print experiment information to user so that they can know everything about the experiment.
         self.print_experiment_information()
-        exit()
+
     def print_experiment_information(self) -> None:
         """
         Prints out a summary of the experiment's configurations and paths to the console before training begins.
@@ -105,7 +110,7 @@ class Trainer:
             None
         """
         dataset_path = Path(self.experiment_configuration["dataset_folder"])
-        
+
         print_yellow("=== Experiment Launch Information ===", add_separators=True)
         print_blue(f"- Tensorboard Directory : file://{self.tensorboard_directory.absolute()}")
         print_blue(f"- Weights Directory     : file://{self.weights_directory.absolute()}")
@@ -119,7 +124,7 @@ class Trainer:
         print_blue(f"- Learning Rate         : {self.learning_rate}")
         print_blue(f"- Resume Training       : {self.resume_training}")
 
-    def setup_training_paths(self) -> tuple[Path, Path]:
+    def setup_training_paths(self, initial_configuration_path: Path) -> tuple[Path, Path, Path]:
         """
         Sets up the directory structure and persistent files for training outputs.
 
@@ -128,10 +133,14 @@ class Trainer:
         file are properly initialized within the global `project_root` before the training
         loop commences.
 
+        Args:
+            initial_configuration_path (Path): The original path of the experiment configuration file.
+
         Returns:
             tuple[Path, Path, Path]: A tuple containing:
                 - tensorboard_directory (Path): Path to the TensorBoard logs folder.
                 - weights_directory (Path): Path to the saved model weights folder.
+                - configuration_path (Path): Path to the archived configuration file.
         """
         tensorboard_directory = self.project_root / "Tensorboard"
         weights_directory = self.project_root / "Weights"
@@ -143,10 +152,9 @@ class Trainer:
 
         # Save a copy of the configuration file
         new_configuration_path = self.project_root / "training_configuration.yaml"
-        copyfile(src=str(self.configuration_path), dst=str(new_configuration_path))
-        self.configuration_path = new_configuration_path
+        copyfile(src=str(initial_configuration_path), dst=str(new_configuration_path))
 
-        return tensorboard_directory, weights_directory
+        return tensorboard_directory, weights_directory, new_configuration_path
 
     def setup_tensorboard_writers(self) -> Tuple[SummaryWriter, Optional[SummaryWriter]]:
         """
@@ -246,9 +254,12 @@ class Trainer:
             self.optimizer.zero_grad()
 
             # Forward pass
-            training_loss, model_outputs = self.run_model_iteration(batch_images=training_images, batch_masks=training_masks,
-                                                        writer=self.training_writer, iteration=training_iteration,
-                                                        tracker_dictionary=None)
+
+            training_loss, model_outputs = self.run_model_iteration(batch_images=training_images,
+                                                                    batch_masks=training_masks,
+                                                                    writer=self.training_writer,
+                                                                    iteration=training_iteration,
+                                                                    tracker_dictionary=None)
 
             # TODO Still in progress
             # Testing of the focal loss
@@ -269,12 +280,15 @@ class Trainer:
                     _, _ = self.run_model_iteration(batch_images=validation_images, batch_masks=validation_masks,
                                                     writer=self.validation_writer, iteration=training_iteration,
                                                     tracker_dictionary=None)
-                    exit()
+
 
     def run_training_loop(self) -> None:
         """
         Executes the main training loop for the U-Net model.
         """
+        # Initialize tensorboard writers right before training starts
+        self.training_writer, self.validation_writer = self.setup_tensorboard_writers()
+
         # Get dataloader
         training_dataloader_iterator = iter(self.train_dataloader)
         validation_dataloader_iterator = iter(self.validation_dataloader)
@@ -342,8 +356,9 @@ class Trainer:
             self.save_model(iteration=training_iteration)
             print_green(f"Model successfully saved at iteration {training_iteration}. Exiting Training.",
                         add_separators=True)
-            self.training_writer.close()
-            if self.compute_validation_iteration:
+            if self.training_writer is not None:
+                self.training_writer.close()
+            if self.compute_validation_iteration and self.validation_writer is not None:
                 self.validation_writer.close()
 
     def run_test_evaluation(self, iteration: int) -> None:
@@ -472,7 +487,7 @@ class Trainer:
         return ious
 
     def run_model_iteration(self, batch_images: torch.Tensor, batch_masks: torch.Tensor,
-                            writer: SummaryWriter, iteration: int,
+                            writer: Optional[SummaryWriter], iteration: int,
                             tracker_dictionary: dict | None) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Executes a single forward pass of the U-Net, computes the BCE loss,
@@ -481,7 +496,7 @@ class Trainer:
         Args:
             batch_images (torch.Tensor): The input image tensor of shape (B, C, H, W).
             batch_masks (torch.Tensor): The ground truth mask tensor of shape (B, 1, H, W).
-            writer (SummaryWriter): TensorBoard writer for logging.
+            writer (Optional[SummaryWriter]): TensorBoard writer for logging. If None, logging is skipped.
             iteration (int): The current training iteration step.
             tracker_dictionary (Dict[str, Any] | None): Dictionary tracking rolling average metrics.
 
@@ -537,16 +552,19 @@ class Trainer:
         # Update the full-checkpoint registry
         self.dump_in_checkpoint(iteration=iteration)
 
-    def log_metrics_to_tensorboard(self, writer: SummaryWriter, iteration: int,
+    def log_metrics_to_tensorboard(self, writer: Optional[SummaryWriter], iteration: int,
                                    metric_dictionary: Dict[str, torch.Tensor]):
         """
         Logs individual metric components and total loss to TensorBoard.
 
         Args:
-            writer (SummaryWriter): The TensorBoard writer to use.
+            writer (Optional[SummaryWriter]): The TensorBoard writer to use. If None, writing is skipped.
             iteration (int): The current iteration index.
             metric_dictionary (Dict[str, torch.Tensor]): Dictionary containing current iteration metrics.
         """
+        if writer is None:
+            return
+
         for metric_key, display_name in self.tracked_metrics_mapping.items():
             writer.add_scalar(display_name, metric_dictionary[metric_key].item(), iteration)
 
