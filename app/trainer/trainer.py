@@ -110,6 +110,7 @@ class Trainer:
         print_blue(f"- Tensorboard Directory : file://{self.tensorboard_directory.absolute()}")
         print_blue(f"- Weights Directory     : file://{self.weights_directory.absolute()}")
         print_blue(f"- Dataset Root Folder   : file://{dataset_path.absolute()}")
+        print_blue(f"- Configuration File    : file://{self.configuration_path.absolute()}")
         print_blue(f"- Train Dataset         : file://{(dataset_path / 'train_dataset.json').absolute()}")
         print_blue(f"- Validation Dataset    : file://{(dataset_path / 'validation_dataset.json').absolute()}")
         print_blue(f"- Test Dataset          : file://{(dataset_path / 'test_dataset.json').absolute()}")
@@ -141,7 +142,9 @@ class Trainer:
         weights_directory.mkdir(exist_ok=True, parents=True)
 
         # Save a copy of the configuration file
-        copyfile(src=str(self.configuration_path), dst=str(self.project_root / "training_configuration.yaml"))
+        new_configuration_path = self.project_root / "training_configuration.yaml"
+        copyfile(src=str(self.configuration_path), dst=str(new_configuration_path))
+        self.configuration_path = new_configuration_path
 
         return tensorboard_directory, weights_directory
 
