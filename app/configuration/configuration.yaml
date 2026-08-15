@@ -5,23 +5,24 @@ ExperimentConfiguration:
   weight_saving_iterations: 2000
   number_iterations: 1e6
   learning_rate: 2.0e-4
-  loss: "focal" # Choose either "classic" for classic cross entropy loss or "focal" for focal loss
+  loss: "classic" # Choose either "classic" for classic cross entropy loss or "focal" for focal loss
   focal_loss_parameters:
-    alpha: [ 0.25, 0.25, 0.25, 0.25 ]
+    alpha: [ 0.25, 0.25, 0.25, 0.25, 0.25 ]
     gamma: 2
   dtype: "float32"
   batch_size: 8
   compute_validation_iteration: True
   resume_training: True
   label_dictionary:
-    original: 0
-    object_square: 1
-    object_b: 2
-    object_plus: 3
+    background: 0
+    tumor: 1
+    mask_square: 2
+    mask_b: 3
+    mask_plus: 4
 
 UnetConfiguration:
   input_channels: 1
-  output_channels: 4
+  output_channels: 5
   convolution_blocks:
     {
      "1": [1, 32],
