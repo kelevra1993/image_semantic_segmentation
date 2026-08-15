@@ -139,6 +139,13 @@ class Trainer:
         print_blue(f"- Learning Rate         : {self.learning_rate}")
         print_blue(f"- Resume Training       : {self.resume_training}")
 
+        loss_type = self.experiment_configuration.get("loss", "classic")
+        print_blue(f"- Loss Function         : {loss_type}")
+        if loss_type == "focal":
+            focal_parameters = self.experiment_configuration.get("focal_loss_parameters", {})
+            print_blue(f"  - Gamma               : {focal_parameters.get('gamma')}")
+            print_blue(f"  - Alpha               : {focal_parameters.get('alpha')}")
+
     def setup_training_paths(self, initial_configuration_path: Path) -> tuple[Path, Path, Path]:
         """
         Sets up the directory structure and persistent files for training outputs.
