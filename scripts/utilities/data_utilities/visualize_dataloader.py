@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from pathlib import Path
 
-from app.utilities.os_utilities import load_experiment_configuration
+from app.utilities.os_utilities import load_experiment_configuration, print_yellow
 from app.utilities.data_utilities.dataloader import get_dataloaders
 
 
@@ -17,8 +17,10 @@ def main() -> None:
     corresponding multi-class segmentation masks, saving the output to disk 
     for visual verification of the dataset pipeline.
     """
-    print("Loading configurations...")
-    configuration_path = Path("ultrasound_segmentation/configuration/configuration.yaml")
+    print("Loading Configurations...")
+    app_folder = Path(__file__).parents[3] / "app"
+    configuration_path = app_folder / "configuration" / "configuration.yaml"
+
     experiment_configuration, model_configuration = load_experiment_configuration(configuration_path)
 
     print("Initializing DataLoaders...")
@@ -32,11 +34,11 @@ def main() -> None:
         number_of_workers=0  # run on main thread for quick debug
     )
 
-    print(f"Fetching first batch from training set (total batches: {len(train_loader)})...")
+    print(f"Fetching First Batch From Training Set : (total batches: {len(train_loader)})...")
     images, masks = next(iter(train_loader))
 
-    print(f"Image tensor shape: {images.shape}")
-    print(f"Mask tensor shape: {masks.shape}")
+    print(f"- Image tensor shape: {images.shape}")
+    print(f"- Mask tensor shape: {masks.shape}")
 
     # Get the first image in the batch
     image = images[0].numpy()
@@ -63,10 +65,10 @@ def main() -> None:
         axes[i + 1].axis("off")
 
     plt.tight_layout()
-    output_plot_path = "dataloader_debug_visualization.png"
+    output_plot_path = Path(__file__).parent / "dataloader_debug_visualization.png"
     plt.savefig(output_plot_path)
-    print(f"Visualization saved to {output_plot_path}")
-    print("Please review the saved image to verify the multi-class labels.")
+    print(f"Visualization saved to file://{output_plot_path}")
+    print_yellow("- Please review the saved image to verify the multi-class labels.")
 
 
 if __name__ == '__main__':
