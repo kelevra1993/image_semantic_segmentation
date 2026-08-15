@@ -712,12 +712,12 @@ class Trainer:
 
         for metric_key, display_name in self.tracked_metrics_mapping.items():
             train_value = training_tracker_dictionary[metric_key]
-            message = f"Moving Average of Training {display_name:40} : {train_value:.4f}"
+            message = f"Moving Average of Train {display_name:36} : {train_value:.4f}"
             print_blue(message)
 
             if validation_tracker_dictionary is not None:
                 validation_value = validation_tracker_dictionary[metric_key]
-                validation_message = f"Moving Average of Validation {display_name:38} : {validation_value:.4f}"
+                validation_message = f"Moving Average of Valid {display_name:36} : {validation_value:.4f}"
                 print_yellow(validation_message)
 
         duration = time.time() - training_tracker_dictionary['start_time']
