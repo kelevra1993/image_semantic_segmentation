@@ -7,6 +7,40 @@ from app.utilities.os_utilities import load_experiment_configuration, print_yell
 from app.utilities.data_utilities.dataloader import get_dataloaders
 
 
+def visualize_batch(image: np.ndarray, mask: np.ndarray) -> None:
+    """
+    Creates and saves a matplotlib visualization of an input image and its multi-channel masks.
+
+    Args:
+        image (np.ndarray): The input image array.
+        mask (np.ndarray): The corresponding masks array.
+    """
+    # Create a matplotlib figure (1 for the image + 5 for the mask channels)
+    fig, axes = plt.subplots(1, 6, figsize=(24, 5))
+
+    # Plot Image
+    if image.shape[0] == 1:
+        axes[0].imshow(image[0], cmap='gray')
+    else:
+        axes[0].imshow(np.transpose(image, (1, 2, 0)))
+    axes[0].set_title("Input Image")
+    axes[0].axis("off")
+
+    # Titles matching our label dictionary
+    titles = ["Background", "Tumor", "Mask Square", "Mask B", "Mask Plus"]
+
+    # Plot each mask channel
+    for i in range(5):
+        axes[i + 1].imshow(mask[i], cmap='gray')
+        axes[i + 1].set_title(titles[i])
+        axes[i + 1].axis("off")
+
+    plt.tight_layout()
+    output_plot_path = Path(__file__).parent / "dataloader_debug_visualization.png"
+    plt.savefig(output_plot_path)
+    print(f"Visualization saved to file://{output_plot_path}")
+
+
 def main() -> None:
     """
     Entry point for the dataloader visualization script.
@@ -44,30 +78,9 @@ def main() -> None:
     image = images[0].numpy()
     mask = masks[0].numpy()
 
-    # Create a matplotlib figure
-    fig, axes = plt.subplots(1, 5, figsize=(20, 5))
+    # Call the visualization function to plot the input image alongside all its corresponding multi-class masks
+    visualize_batch(image=image, mask=mask)
 
-    # Plot Image
-    if image.shape[0] == 1:
-        axes[0].imshow(image[0], cmap='gray')
-    else:
-        axes[0].imshow(np.transpose(image, (1, 2, 0)))
-    axes[0].set_title("Input Image")
-    axes[0].axis("off")
-
-    # Titles matching our label dictionary
-    titles = ["Original Masks", "Object Square", "Object B", "Object Plus"]
-
-    # Plot each mask channel
-    for i in range(4):
-        axes[i + 1].imshow(mask[i], cmap='gray')
-        axes[i + 1].set_title(titles[i])
-        axes[i + 1].axis("off")
-
-    plt.tight_layout()
-    output_plot_path = Path(__file__).parent / "dataloader_debug_visualization.png"
-    plt.savefig(output_plot_path)
-    print(f"Visualization saved to file://{output_plot_path}")
     print_yellow("- Please review the saved image to verify the multi-class labels.")
 
 
