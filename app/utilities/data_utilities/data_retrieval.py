@@ -77,8 +77,9 @@ class DatasetRetriever:
         Cleans the dataset by removing unwanted classes and flattening the directory structure.
 
         This method removes the 'normal' class folder entirely, and then moves all files from the
-        'benign' and 'malignant' folders directly into the raw dataset directory. The now-empty 
-        'benign' and 'malignant' folders are subsequently deleted.
+        'benign' and 'malignant' folders directly into the raw dataset directory, and renames any
+        file containing '_mask' to instead contain '_mask_tumor' to explicitly indicate the class.
+        The now-empty 'benign' and 'malignant' folders are subsequently deleted.
         """
         normal_directory = os.path.join(self.raw_dataset_directory, "normal")
         benign_directory = os.path.join(self.raw_dataset_directory, "benign")
@@ -88,13 +89,18 @@ class DatasetRetriever:
         if os.path.exists(normal_directory):
             rmtree(normal_directory)
 
-        # Move images to a single directory
+        # Move images to a single directory and rename masks to _mask_tumor
         for data_directory in [benign_directory, malignant_directory]:
             if os.path.exists(data_directory):
                 for file_name in os.listdir(data_directory):
                     source_path = os.path.join(data_directory, file_name)
                     if os.path.isfile(source_path):
-                        move(source_path, self.raw_dataset_directory)
+                        if "_mask" in file_name:
+                            new_file_name = file_name.replace("_mask", "_mask_tumor")
+                            target_path = os.path.join(self.raw_dataset_directory, new_file_name)
+                        else:
+                            target_path = os.path.join(self.raw_dataset_directory, file_name)
+                        move(source_path, target_path)
                 os.rmdir(data_directory)
 
     def preprocess_dataset(self) -> None:
@@ -141,7 +147,7 @@ class DatasetRetriever:
         This method iterates over all preprocessed images and creates three distinct, non-overlapping
         dummy masks for each image: a square, a letter B, and a plus sign. These dummy shapes are
         used to train the network on multi-class segmentation. The shapes are randomly placed, and
-        we ensure they do not intersect with each other or the original masks. We also generate the
+        we ensure they do not intersect with each other or the tumor masks. We also generate the
         objects with larger dimensions and line thickness to ensure they are easily segmentable. 
         Crucially, we draw these shapes directly onto the input image in white so the neural network
         can detect them.
@@ -154,9 +160,8 @@ class DatasetRetriever:
         target_directory = os.path.join(self.dataset_directory, directory_name)
 
         all_files = get_images(target_directory, basename=True)
-        # Filter out masks, only keep raw images
-        images = [file_name for file_name in all_files if '_mask' not in file_name and not any(
-            suffix in file_name for suffix in ['_object_b', '_object_plus', '_object_square'])]
+        # Filter out all masks to only keep raw images (all masks have '_mask' in their name)
+        images = [file_name for file_name in all_files if '_mask' not in file_name]
 
         for image_name in tqdm(images, desc="Generating Dummy Masks & Updating Images"):
             base_name = os.path.splitext(image_name)[0]
@@ -165,18 +170,18 @@ class DatasetRetriever:
             image_path = os.path.join(target_directory, image_name)
             image_array = cv2.imread(image_path)
 
-            # Load original masks to avoid overlap
-            original_masks = [file_name for file_name in all_files if file_name.startswith(base_name + '_mask')]
+            # Load tumor masks to avoid overlap
+            tumor_masks = [file_name for file_name in all_files if file_name.startswith(base_name + '_mask_tumor')]
 
             combined_mask = np.zeros((self.image_size, self.image_size), dtype=np.uint8)
-            for mask_name in original_masks:
+            for mask_name in tumor_masks:
                 mask_path = os.path.join(target_directory, mask_name)
                 mask_array = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
                 combined_mask = np.maximum(combined_mask, mask_array)
 
             masks = [combined_mask]
 
-            for shape_type, suffix in [("square", "_object_square"), ("B", "_object_b"), ("+", "_object_plus")]:
+            for shape_type, suffix in [("square", "_mask_square"), ("B", "_mask_b"), ("+", "_mask_plus")]:
                 dummy_mask = np.zeros((self.image_size, self.image_size), dtype=np.uint8)
                 attempts = 0
                 while attempts < 100:
@@ -248,9 +253,8 @@ class DatasetRetriever:
 
         all_files = get_images(target_directory, basename=True)
 
-        # Identify all images (those without '_mask' in their name)
-        images = [file_name for file_name in all_files if '_mask' not in file_name and not any(
-            suffix in file_name for suffix in ['_object_b', '_object_plus', '_object_square'])]
+        # Identify all images (all masks contain '_mask' in their name)
+        images = [file_name for file_name in all_files if '_mask' not in file_name]
 
         dataset_entries = []
         for image_name in images:
@@ -258,10 +262,10 @@ class DatasetRetriever:
 
             # Find all corresponding masks for the current image
             masks = {
-                "original": [file_name for file_name in all_files if file_name.startswith(base_name + '_mask')],
-                "object_square": f"{base_name}_object_square.png",
-                "object_b": f"{base_name}_object_b.png",
-                "object_plus": f"{base_name}_object_plus.png"}
+                "tumor": [file_name for file_name in all_files if file_name.startswith(base_name + '_mask_tumor')],
+                "mask_square": f"{base_name}_mask_square.png",
+                "mask_b": f"{base_name}_mask_b.png",
+                "mask_plus": f"{base_name}_mask_plus.png"}
 
             dataset_entries.append({"image_name": image_name, "masks": masks})
 
