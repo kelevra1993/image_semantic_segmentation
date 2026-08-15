@@ -65,7 +65,8 @@ def debug_focal_loss(parameter_dictionary: Dict[str, Dict[str, float]],
     # Create Focal Loss Object And Compute The Loss
     focal_loss = FocalLoss(alpha=alpha, gamma=gamma, device=device, dtype=torch.float32)
     loss, focal_loss_image = focal_loss(prediction_tensor,
-                                        ground_truth_tensor)
+                                        ground_truth_tensor,
+                                        return_focal_loss_image=True)
 
     # Globally min-max normalize the image
     focal_min, focal_max = focal_loss_image[0].min(), focal_loss_image[0].max()

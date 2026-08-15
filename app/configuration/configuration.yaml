@@ -5,9 +5,10 @@ ExperimentConfiguration:
   weight_saving_iterations: 2000
   number_iterations: 1e6
   learning_rate: 2.0e-4
-  loss: "focal_loss"
-  alpha: [ 0.25, 0.25, 0.25, 0.25 ]
-  gamma: 2
+  loss: "focal" # Choose either "classic" for classic cross entropy loss or "focal" for focal loss
+  focal_loss_parameters:
+    alpha: [ 0.25, 0.25, 0.25, 0.25 ]
+    gamma: 2
   dtype: "float32"
   batch_size: 8
   compute_validation_iteration: True

@@ -79,13 +79,8 @@ class Trainer:
 
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.learning_rate)
 
-        # TODO Will be modified
-        # we will compute all losses but we will only optimise some
-        self.criterion = BCELoss()
-        self.focal_loss = FocalLoss(alpha=self.experiment_configuration["alpha"],
-                                    gamma=self.experiment_configuration["gamma"],
-                                    device=self.device,
-                                    dtype=self.dtype)
+        # Setup the selected loss function
+        self.criterion = self.setup_criterion()
 
         # Restoration logic
         self.start_iteration = 1
@@ -99,6 +94,26 @@ class Trainer:
 
         # Print experiment information to user so that they can know everything about the experiment.
         self.print_experiment_information()
+
+    def setup_criterion(self) -> torch.nn.Module:
+        """
+        Initializes the loss function based on the configuration.
+
+        Returns:
+            torch.nn.Module: The configured loss module (e.g., BCELoss or FocalLoss).
+        """
+        loss_type = self.experiment_configuration.get("loss", "classic")
+
+        if loss_type == "classic":
+            return BCELoss()
+        elif loss_type == "focal":
+            focal_parameters = self.experiment_configuration.get("focal_loss_parameters", {})
+            return FocalLoss(alpha=focal_parameters["alpha"],
+                             gamma=focal_parameters["gamma"],
+                             device=self.device,
+                             dtype=self.dtype)
+        else:
+            raise ValueError(f"Unknown loss type: {loss_type}. Choose 'classic' or 'focal'.")
 
     def print_experiment_information(self) -> None:
         """
@@ -254,16 +269,11 @@ class Trainer:
             self.optimizer.zero_grad()
 
             # Forward pass
-
-            training_loss, model_outputs = self.run_model_iteration(batch_images=training_images,
-                                                                    batch_masks=training_masks,
-                                                                    writer=self.training_writer,
-                                                                    iteration=training_iteration,
-                                                                    tracker_dictionary=None)
-
-            # TODO Still in progress
-            # Testing of the focal loss
-            self.focal_loss.forward(model_predictions=model_outputs, ground_truths=training_masks)
+            training_loss, _ = self.run_model_iteration(batch_images=training_images,
+                                                        batch_masks=training_masks,
+                                                        writer=self.training_writer,
+                                                        iteration=training_iteration,
+                                                        tracker_dictionary=None)
 
             # Backward and Step
             training_loss.backward()
@@ -280,7 +290,6 @@ class Trainer:
                     _, _ = self.run_model_iteration(batch_images=validation_images, batch_masks=validation_masks,
                                                     writer=self.validation_writer, iteration=training_iteration,
                                                     tracker_dictionary=None)
-
 
     def run_training_loop(self) -> None:
         """

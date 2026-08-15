@@ -38,7 +38,8 @@ class FocalLoss(nn.Module):
         self.gamma = torch.tensor(gamma, device=self.device, dtype=self.dtype)
 
     def forward(self, model_predictions: torch.Tensor,
-                ground_truths: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+                ground_truths: torch.Tensor,
+                return_focal_loss_image: bool = False):
         """
         Calculates the focal loss.
         
@@ -47,9 +48,11 @@ class FocalLoss(nn.Module):
                 Expected shape is (batch, number_classes, height, width).
             ground_truths (torch.Tensor): The one-hot encoded ground truth masks.
                 Expected shape is (batch, number_classes, height, width).
+            return_focal_loss_image (bool): If True, returns a tuple containing the scalar loss and the focal loss image tensor.
+                Defaults to False.
                 
         Returns:
-            tuple: A tuple containing the scalar mean focal loss and the focal loss image tensor.
+            torch.Tensor or tuple: The scalar mean focal loss. If `return_focal_loss_image` is True, returns a tuple containing the scalar loss and the full loss image tensor.
         """
 
         ground_truths = ground_truths.to(device=self.device)
@@ -97,4 +100,7 @@ class FocalLoss(nn.Module):
         batched_focal_loss = torch.sum(focal_loss_image, dim=[-1, -2])
         focal_loss = torch.mean(batched_focal_loss)
 
-        return focal_loss, focal_loss_image
+        if return_focal_loss_image:
+            return focal_loss, focal_loss_image
+        else:
+            return focal_loss
