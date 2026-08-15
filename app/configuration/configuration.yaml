@@ -7,8 +7,8 @@ ExperimentConfiguration:
   learning_rate: 2.0e-4
   loss: "classic" # Choose either "classic" for classic cross entropy loss or "focal" for focal loss
   focal_loss_parameters:
-    alpha: [ 0.25, 0.25, 0.25, 0.25, 0.25 ]
-    gamma: 2
+    alpha: [ 1.0, 2.0, 1.0, 2.0, 1.0 ]
+    gamma: 0.75
   dtype: "float32"
   batch_size: 8
   compute_validation_iteration: True

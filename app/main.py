@@ -4,7 +4,7 @@ from pathlib import Path
 
 sys.path.append(os.getcwd())
 from app.trainer.trainer import Trainer
-from app.utilities.os_utilities import load_experiment_configuration, print_yellow
+from app.utilities.os_utilities import load_experiment_configuration, print_yellow, print_blue
 
 
 def main() -> None:
@@ -27,7 +27,7 @@ def main() -> None:
                       configuration_path=experiment_configuration_path)
 
     # Start training loop
-    print(f"Starting Training For Experiment: {experiment_configuration['project_root']}...")
+    print_blue(f"Starting Training For Experiment At: file://{experiment_configuration['project_root']}...")
     trainer.run_training_loop()
     print("Training Example Completed.")
 
