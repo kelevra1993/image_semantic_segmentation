@@ -70,22 +70,30 @@ class UltrasoundDataset(Dataset):
 
         mask_list = [None] * len(self.label_dictionary)
 
-        combined_original = None
-        for mask_name in mask_names["original"]:
+        combined_tumor = None
+        for mask_name in mask_names["tumor"]:
             mask_path = self.data_directory / mask_name
             mask_array = cv2.imread(str(mask_path), cv2.IMREAD_GRAYSCALE)
-            if combined_original is None:
-                combined_original = mask_array
+            if combined_tumor is None:
+                combined_tumor = mask_array
             else:
-                combined_original = np.maximum(combined_original, mask_array)
-        if combined_original is None:
-            combined_original = np.zeros(image_array.shape[:2], dtype=np.uint8)
+                combined_tumor = np.maximum(combined_tumor, mask_array)
+        if combined_tumor is None:
+            combined_tumor = np.zeros(image_array.shape[:2], dtype=np.uint8)
 
-        mask_list[self.label_dictionary["original"]] = combined_original
+        mask_list[self.label_dictionary["tumor"]] = combined_tumor
 
-        for key in ["object_square", "object_b", "object_plus"]:
+        for key in ["mask_square", "mask_b", "mask_plus"]:
             mask_array = cv2.imread(str(self.data_directory / mask_names[key]), cv2.IMREAD_GRAYSCALE)
             mask_list[self.label_dictionary[key]] = mask_array
+
+        # Compute the background mask (Channel 0) if it is in the label dictionary
+        if "background" in self.label_dictionary:
+            background_mask = np.ones(image_array.shape[:2], dtype=np.uint8) * 255
+            for i in range(1, len(self.label_dictionary)):
+                if mask_list[i] is not None:
+                    background_mask[mask_list[i] > 0] = 0
+            mask_list[self.label_dictionary["background"]] = background_mask
 
         combined_mask_array = np.stack(mask_list, axis=2)
 
