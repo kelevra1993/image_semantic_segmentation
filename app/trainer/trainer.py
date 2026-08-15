@@ -3,6 +3,7 @@ from app.loss.bce_loss import BCELoss
 import os
 import csv
 import time
+from shutil import copyfile
 import numpy as np
 
 import torch
@@ -140,7 +141,6 @@ class Trainer:
         weights_directory.mkdir(exist_ok=True, parents=True)
 
         # Save a copy of the configuration file
-        from shutil import copyfile
         copyfile(src=str(self.configuration_path), dst=str(self.project_root / "training_configuration.yaml"))
 
         return tensorboard_directory, weights_directory
