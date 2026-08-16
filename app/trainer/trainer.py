@@ -146,7 +146,7 @@ class Trainer:
         print_blue(f"- Resume Training       : {self.resume_training}")
 
         loss_type = self.experiment_configuration.get("loss", "classic")
-        print_blue(f"- Loss Function         : {loss_type}")
+        print_blue(f"- Loss Function         : {loss_type.capitalize()}")
         if loss_type == "focal":
             focal_parameters = self.experiment_configuration.get("focal_loss_parameters", {})
             print_blue(f"  - Gamma               : {focal_parameters.get('gamma')}")
