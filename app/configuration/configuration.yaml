@@ -4,11 +4,11 @@ ExperimentConfiguration:
   expected_input_size: 384
   information_dump: 500
   weight_saving_iterations: 1000
-  number_iterations: 1e4
+  number_iterations: 1e5
   learning_rate: 2.0e-4
   loss: "focal" # Choose either "classic" for classic cross entropy loss or "focal" for focal loss
   focal_loss_parameters:
-    alpha: [ 1.0, 2.0, 1.0, 2.0, 1.0 ]
+    alpha: [ 1.0, 2.0, 1.0, 1.0, 1.0 ]
     gamma: 0.75
   dtype: "float32"
   batch_size: 8
