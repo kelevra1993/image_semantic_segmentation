@@ -125,13 +125,13 @@ At specific intervals (defined by `weight_saving_iterations` in your configurati
 The on-the-fly training logs will look like this:
 
 <p align="center">
-  <img src="README/on-fly-train-logs.png" width="70%" />
+  <img src="README/on-fly-train-logs.png" width="90%" />
 </p>
 
 Additionally, the inferred image samples generated for debugging will look like this:
 
 <p align="center">
-  <img src="README/infered-sample.png" width="90%" />
+  <img src="README/infered-sample.png" width="100%" />
 </p>
 
 Each row in the generated image corresponds to a specific class channel. From left to right, the five columns represent:
