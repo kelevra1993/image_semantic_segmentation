@@ -3,6 +3,9 @@ import torch.nn as nn
 import torch.nn.functional as functional
 
 from app.utilities.os_utilities import print_yellow, print_blue, print_red, print_green
+from rich.console import Console
+from rich.columns import Columns
+from rich.panel import Panel
 
 
 class ChannelLayerNormalizer(nn.Module):
@@ -209,6 +212,8 @@ class UnetModel(nn.Module):
         Args:
             expected_image_size (tuple[int, int]): The height and width of the input image.
         """
+        console = Console()
+        
         # Determine input channels from the first encoder block's first convolutional layer
         first_convolution = self.encoder_blocks[0].block[0]
         input_channels = first_convolution.in_channels
@@ -219,32 +224,31 @@ class UnetModel(nn.Module):
         dummy_tensor = dummy_tensor.to(device_type)
 
         print_yellow("U-Net Architecture Summary", add_separators=True)
-
-        print(f"Input image shape: {list(dummy_tensor.shape)}")
+        print_blue(f"Input image shape: {list(dummy_tensor.shape)}", add_separators=True)
 
         # Initialize the list to store encoder features for later skip connections
         encoder_features = []
-
-        print_red("--- Downscaling Path (Encoder) ---", add_separators=True, upper_space=1)
+        encoder_text = ""
 
         # Iterate through each downsampling block to simulate the feature extraction path
         for index, block in enumerate(self.encoder_blocks):
             dummy_tensor = block(dummy_tensor)
             encoder_features.append(dummy_tensor)
-            print(f" - Encoder Block {index}")
-            print(f"   - Encoder Output Shape : {list(dummy_tensor.shape)}")
+            encoder_text += f"[bold]Encoder Block {index}[/bold]\n"
+            encoder_text += f" Output: {list(dummy_tensor.shape)}\n"
 
             # Apply max pooling to halve spatial dimensions, except for the final bottleneck layer
             if index < len(self.encoder_blocks) - 1:
                 dummy_tensor = self.pooling_layer(dummy_tensor)
-                print(f"   - After MaxPool Shape  : {list(dummy_tensor.shape)}")
+                encoder_text += f" MaxPool: {list(dummy_tensor.shape)}\n"
+            encoder_text += "\n"
 
-        print_red("--- Upscaling Path (Decoder) ---", add_separators=True, upper_space=1)
+        decoder_text = ""
 
         # Iterate through the decoder blocks to simulate the upsampling and reconstruction path
         for index in range(len(self.decoder_blocks)):
-            print(f" - Decoder Block {index}")
-            print(f"   - Decoder Input Shape   : {list(dummy_tensor.shape)}")
+            decoder_text += f"[bold]Decoder Block {index}[/bold]\n"
+            decoder_text += f" Input: {list(dummy_tensor.shape)}\n"
 
             # Upsample the current feature map and retrieve the corresponding skip connection
             dummy_tensor = self.up_convolutions[index](dummy_tensor)
@@ -252,8 +256,14 @@ class UnetModel(nn.Module):
             # Concatenate the upsampled features with the skip connection to provide high-resolution details
             dummy_tensor = torch.cat([skip_connection_feature, dummy_tensor], dim=1)
             dummy_tensor = self.decoder_blocks[index](dummy_tensor)
-            print(f"   - Decoder Output Shape  : {list(dummy_tensor.shape)}")
+            decoder_text += f" Output: {list(dummy_tensor.shape)}\n\n"
 
         # Apply the final convolutional layer to map the features to the desired number of output classes
         dummy_tensor = self.final_convolution(dummy_tensor)
-        print_green(f"Final Convolution output shape: {list(dummy_tensor.shape)}", add_separators=True)
+        
+        encoder_panel = Panel(encoder_text.strip(), title="Downscaling Path (Encoder)", border_style="red")
+        decoder_panel = Panel(decoder_text.strip(), title="Upscaling Path (Decoder)", border_style="green")
+        
+        console.print(Columns([encoder_panel, decoder_panel]))
+
+        print_green(f"Final Convolution output shape: {list(dummy_tensor.shape)}", add_separators=True, upper_space=1)
