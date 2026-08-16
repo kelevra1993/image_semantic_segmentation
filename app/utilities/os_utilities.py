@@ -98,7 +98,7 @@ def get_images(path: str | Path, basename: bool = False, sort: bool = False, mix
     return images
 
 
-def print_blue(output: str, add_separators: bool = False) -> None:
+def print_blue(output: str, add_separators: bool = False, upper_space: int = 0, lower_space: int = 0) -> None:
     """
     Prints a string to the console in bold blue color.
 
@@ -110,7 +110,11 @@ def print_blue(output: str, add_separators: bool = False) -> None:
         output (str): The string to be printed.
         add_separators (bool): If True, wraps the output with horizontal
             separators for better visibility.
+        upper_space (int): The number of blank lines to print before the output.
+        lower_space (int): The number of blank lines to print after the output.
     """
+    for _ in range(upper_space):
+        print("")
     if add_separators:
         length = max(len(line) for line in output.split("\n")) + 1
         print("\033[94m" + "\033[1m" + str(length * "-") + "\033[0m")
@@ -118,9 +122,11 @@ def print_blue(output: str, add_separators: bool = False) -> None:
         print("\033[94m" + "\033[1m" + str(length * "-") + "\033[0m")
     else:
         print("\033[94m" + "\033[1m" + output + "\033[0m")
+    for _ in range(lower_space):
+        print("")
 
 
-def print_green(output: str, add_separators: bool = False) -> None:
+def print_green(output: str, add_separators: bool = False, upper_space: int = 0, lower_space: int = 0) -> None:
     """
     Prints a string to the console in bold green color.
 
@@ -132,7 +138,11 @@ def print_green(output: str, add_separators: bool = False) -> None:
         output (str): The string to be printed.
         add_separators (bool): If True, wraps the output with horizontal
             separators for better visibility.
+        upper_space (int): The number of blank lines to print before the output.
+        lower_space (int): The number of blank lines to print after the output.
     """
+    for _ in range(upper_space):
+        print("")
     if add_separators:
         length = max(len(line) for line in output.split("\n")) + 1
         print("\033[32m" + "\033[1m" + str(length * "-") + "\033[0m")
@@ -140,9 +150,11 @@ def print_green(output: str, add_separators: bool = False) -> None:
         print("\033[32m" + "\033[1m" + str(length * "-") + "\033[0m")
     else:
         print("\033[32m" + "\033[1m" + output + "\033[0m")
+    for _ in range(lower_space):
+        print("")
 
 
-def print_yellow(output: str, add_separators: bool = False) -> None:
+def print_yellow(output: str, add_separators: bool = False, upper_space: int = 0, lower_space: int = 0) -> None:
     """
     Prints a string to the console in bold yellow color.
 
@@ -154,7 +166,11 @@ def print_yellow(output: str, add_separators: bool = False) -> None:
         output (str): The string to be printed.
         add_separators (bool): If True, wraps the output with horizontal
             separators for better visibility.
+        upper_space (int): The number of blank lines to print before the output.
+        lower_space (int): The number of blank lines to print after the output.
     """
+    for _ in range(upper_space):
+        print("")
     if add_separators:
         length = max(len(line) for line in output.split("\n")) + 1
         print("\033[93m" + "\033[1m" + str(length * "-") + "\033[0m")
@@ -162,9 +178,11 @@ def print_yellow(output: str, add_separators: bool = False) -> None:
         print("\033[93m" + "\033[1m" + str(length * "-") + "\033[0m")
     else:
         print("\033[93m" + "\033[1m" + output + "\033[0m")
+    for _ in range(lower_space):
+        print("")
 
 
-def print_red(output: str, add_separators: bool = False) -> None:
+def print_red(output: str, add_separators: bool = False, upper_space: int = 0, lower_space: int = 0) -> None:
     """
     Prints a string to the console in bold red color.
 
@@ -175,7 +193,11 @@ def print_red(output: str, add_separators: bool = False) -> None:
         output (str): The string to be printed.
         add_separators (bool): If True, wraps the output with horizontal
             separators for better visibility.
+        upper_space (int): The number of blank lines to print before the output.
+        lower_space (int): The number of blank lines to print after the output.
     """
+    for _ in range(upper_space):
+        print("")
     if add_separators:
         length = max(len(line) for line in output.split("\n")) + 1
         print("\033[91m" + "\033[1m" + str(length * "-") + "\033[0m")
@@ -183,9 +205,11 @@ def print_red(output: str, add_separators: bool = False) -> None:
         print("\033[91m" + "\033[1m" + str(length * "-") + "\033[0m")
     else:
         print("\033[91m" + "\033[1m" + output + "\033[0m")
+    for _ in range(lower_space):
+        print("")
 
 
-def print_bold(output: str, add_separators: bool = False) -> None:
+def print_bold(output: str, add_separators: bool = False, upper_space: int = 0, lower_space: int = 0) -> None:
     """
     Prints a string to the console in bold font.
 
@@ -196,7 +220,11 @@ def print_bold(output: str, add_separators: bool = False) -> None:
         output (str): The string to be printed.
         add_separators (bool): If True, wraps the output with horizontal
             separators for better visibility.
+        upper_space (int): The number of blank lines to print before the output.
+        lower_space (int): The number of blank lines to print after the output.
     """
+    for _ in range(upper_space):
+        print("")
     if add_separators:
         length = max(len(line) for line in output.split("\n")) + 1
         print("\033[1m" + str(length * "-") + "\033[0m")
@@ -204,6 +232,8 @@ def print_bold(output: str, add_separators: bool = False) -> None:
         print("\033[1m" + str(length * "-") + "\033[0m")
     else:
         print("\033[1m" + output + "\033[0m")
+    for _ in range(lower_space):
+        print("")
 
 
 def print_dictionary(dictionary: Dict[str, Any], indent: int = 4) -> None:
