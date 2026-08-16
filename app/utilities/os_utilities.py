@@ -1,4 +1,5 @@
 import json
+import csv
 import os.path
 import yaml
 import torch
@@ -328,7 +329,8 @@ def load_experiment_configuration(configuration_path: str | Path) -> Tuple[Dict[
     return experiment_configuration, model_configuration
 
 
-def save_test_evaluation_csv(experiment_folder: Path, iteration: int, loss: float, iou_per_class: dict[str, float]) -> None:
+def save_test_evaluation_csv(experiment_folder: Path, iteration: int, loss: float,
+                             iou_per_class: dict[str, float]) -> None:
     """
     Saves the test evaluation results (loss and per-class IoU) to a CSV file.
     Uses ';' as the delimiter.
@@ -339,19 +341,22 @@ def save_test_evaluation_csv(experiment_folder: Path, iteration: int, loss: floa
         loss (float): The total test loss.
         iou_per_class (dict[str, float]): A dictionary mapping class names to their computed IoU score.
     """
-    import csv
     file_path = experiment_folder / "test_evaluation_results.csv"
     file_exists = file_path.exists()
-    
-    with open(file_path, "a", newline='') as f:
-        headers = ["Iteration", "Total Loss"] + [f"IoU {k.capitalize()}" for k in iou_per_class.keys()]
-        writer = csv.DictWriter(f, fieldnames=headers, delimiter=";")
-        
+
+    with open(file_path, "a", newline='') as output_file:
+        headers = ["Iteration", "Total Loss"] + [f"IoU {class_name.capitalize()}" for class_name in
+                                                 iou_per_class.keys()]
+        writer = csv.DictWriter(output_file, fieldnames=headers, delimiter=";")
+
         if not file_exists:
             writer.writeheader()
-            
+
         row = {"Iteration": iteration, "Total Loss": f"{loss:.4f}"}
-        for k, v in iou_per_class.items():
-            row[f"IoU {k.capitalize()}"] = f"{v:.4f}"
-            
+        for class_name, iou_score in iou_per_class.items():
+            row[f"IoU {class_name.capitalize()}"] = f"{iou_score:.4f}"
+
         writer.writerow(row)
+
+    print(f"Full Test Evaluation Completed, Results Appended To :")
+    print(f"- file://{file_path}")

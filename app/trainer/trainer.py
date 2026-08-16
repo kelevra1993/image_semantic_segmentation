@@ -15,7 +15,8 @@ from pathlib import Path
 from typing import Dict, Any, Optional, Tuple
 
 from app.loss.focal_loss import FocalLoss
-from app.utilities.os_utilities import load_configuration, print_red, print_green, print_blue, print_yellow, save_test_evaluation_csv
+from app.utilities.os_utilities import load_configuration, print_red, print_green, print_blue, print_yellow, \
+    save_test_evaluation_csv
 from app.utilities.tensor_utilities import get_device, print_tensor_status, print_tensor_list, print_tensor_shape
 from app.model.model import UnetModel
 from app.utilities.data_utilities.dataloader import get_dataloaders
@@ -394,7 +395,7 @@ class Trainer:
 
         total_test_loss = 0.0
         number_batches = len(self.test_dataloader)
-        
+
         # Initialize dictionary to accumulate IoU for each label
         total_iou = {label: 0.0 for label in self.experiment_configuration["label_dictionary"].keys()}
 
@@ -408,29 +409,24 @@ class Trainer:
                 loss = self.criterion(model_predictions=model_outputs, ground_truths=test_masks)
 
                 total_test_loss += loss.item()
-                
+
                 # Compute IoU for this batch
                 batch_iou = self.intersection_over_union_per_class(predictions=model_outputs, targets=test_masks)
-                for label in total_iou.keys():
-                    # intersection_over_union_per_class returns keys like "iou_{label}"
-                    total_iou[label] += batch_iou[f"iou_{label}"].item()
+                for label_name in total_iou.keys():
+                    # intersection_over_union_per_class returns keys like "iou_{label_name}"
+                    total_iou[label_name] += batch_iou[f"iou_{label_name}"].item()
 
         # Calculate mean
         mean_test_loss = total_test_loss / number_batches if number_batches > 0 else 0.0
-        mean_iou_per_class = {label: (total / number_batches if number_batches > 0 else 0.0) 
-                              for label, total in total_iou.items()}
+        mean_iou_per_class = {label_name: (accumulated_iou / number_batches if number_batches > 0 else 0.0)
+                              for label_name, accumulated_iou in total_iou.items()}
 
         # Log to file
         save_test_evaluation_csv(
             experiment_folder=self.project_root,
             iteration=iteration,
             loss=mean_test_loss,
-            iou_per_class=mean_iou_per_class
-        )
-
-        evaluation_file = self.project_root / "test_evaluation_results.csv"
-        print(f"Full Test Evaluation Completed, Results Appended To :")
-        print(f"- file://{evaluation_file}")
+            iou_per_class=mean_iou_per_class)
 
         # Run sample predictions for visualization
         self.run_sample_predictions(iteration=iteration, number_samples=20)
@@ -574,7 +570,6 @@ class Trainer:
         model_directory.mkdir(exist_ok=True, parents=True)
 
         checkpoint_path = model_directory / f"model_{iteration:06}.pt"
-
 
         torch.save({
             'iteration': iteration,
