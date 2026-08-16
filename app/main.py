@@ -25,7 +25,7 @@ def main() -> None:
     trainer = Trainer(experiment_configuration=experiment_configuration,
                       model_configuration=model_configuration,
                       configuration_path=experiment_configuration_path)
-    exit()
+
     # Start training loop
     print_blue(f"Starting Training For Experiment At: file://{experiment_configuration['project_root']}...")
     trainer.run_training_loop()
