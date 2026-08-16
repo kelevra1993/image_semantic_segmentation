@@ -1,8 +1,8 @@
 <h1 align="center">Image Semantic Segmentation Pipeline</h1>
 
 <p align="center">
-  <img src="README/progression-sample-1.gif" width="35%" />
-  <img src="README/progression-sample-2.gif" width="35%" />
+  <img src="README/progression-sample-1.gif" width="45%" />
+  <img src="README/progression-sample-2.gif" width="45%" />
 </p>
 
 

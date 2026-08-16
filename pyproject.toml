@@ -1,7 +1,7 @@
 [project]
 name = "image-semantic-segmentation"
 version = "0.1.0"
-description = "Add your description here"
+description = "Project for image semantic segmentation"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
