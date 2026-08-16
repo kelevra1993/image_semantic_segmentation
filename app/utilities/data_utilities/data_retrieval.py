@@ -296,7 +296,7 @@ dataset_directory = project_directory / "ultrasound_dataset"
 # Settings for the dataset :
 # Here the image size is set to 512 which is how the data will be preprocessed and prepared for training
 dataset_retriever = DatasetRetriever(dataset_directory=str(dataset_directory),
-                                     image_size=512,
+                                     image_size=384,
                                      keep_aspect_ratio=True)
 
 # Download dataset for kaggle dataset hub
