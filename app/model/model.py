@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as functional
 
+from app.utilities.os_utilities import print_yellow, print_blue, print_red, print_green
+
 
 class ChannelLayerNormalizer(nn.Module):
     """
@@ -195,3 +197,56 @@ class UnetModel(nn.Module):
         output_tensor = self.final_convolution(input_tensor)
 
         return output_tensor
+
+    def print_summary(self, image_size: tuple[int, int]) -> None:
+        """
+        Prints a structural summary of the U-Net architecture given a specific input image size.
+        
+        This function creates a dummy tensor and passes it through the encoder and decoder 
+        paths to trace and display the spatial and channel dimensions at each significant 
+        step of the model, which aids in debugging architecture configurations.
+        
+        Args:
+            image_size (tuple[int, int]): The height and width of the input image.
+        """
+        # Determine input channels from the first encoder block's first convolutional layer
+        first_convolution = self.encoder_blocks[0].block[0]
+        input_channels = first_convolution.in_channels
+
+        dummy_tensor = torch.zeros((1, input_channels, image_size[0], image_size[1]))
+        device_type = next(self.parameters()).device
+        dummy_tensor = dummy_tensor.to(device_type)
+
+        print_yellow("U-Net Architecture Summary", add_separators=True)
+
+        print(f"Input image shape: {list(dummy_tensor.shape)}")
+
+        encoder_features = []
+
+        print_red("--- Downscaling Path (Encoder) ---", add_separators=True, upper_space=1)
+        for index, block in enumerate(self.encoder_blocks):
+            dummy_tensor = block(dummy_tensor)
+            encoder_features.append(dummy_tensor)
+            print(f" - Encoder Block {index}")
+            print(f"   - Encoder Output Shape : {list(dummy_tensor.shape)}")
+
+            if index < len(self.encoder_blocks) - 1:
+                dummy_tensor = self.pooling_layer(dummy_tensor)
+                print(f"   - After MaxPool Shape  : {list(dummy_tensor.shape)}")
+
+        print_red("--- Upscaling Path (Decoder) ---", add_separators=True, upper_space=1)
+        for index in range(len(self.decoder_blocks)):
+            print(f" - Decoder Block {index}")
+            print(f"   - Decoder Input Shape   : {list(dummy_tensor.shape)}")
+
+            dummy_tensor = self.up_convolutions[index](dummy_tensor)
+            skip_connection_feature = encoder_features[-(index + 2)]
+            print(f"   - Upsampled Input Shape : {list(dummy_tensor.shape)}")
+            print(f"   - Skip Connection Shape : {list(skip_connection_feature.shape)}")
+
+            dummy_tensor = torch.cat([skip_connection_feature, dummy_tensor], dim=1)
+            dummy_tensor = self.decoder_blocks[index](dummy_tensor)
+            print(f"   - Decoder Output Shape  : {list(dummy_tensor.shape)}")
+
+        dummy_tensor = self.final_convolution(dummy_tensor)
+        print_green(f"Final Convolution output shape: {list(dummy_tensor.shape)}", add_separators=True, upper_space=1)
