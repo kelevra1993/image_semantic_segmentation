@@ -23,15 +23,15 @@ class BCELoss(nn.Module):
         super().__init__()
         self.criterion = nn.BCEWithLogitsLoss()
         
-    def forward(self, predictions: torch.Tensor, ground_truth: torch.Tensor) -> torch.Tensor:
+    def forward(self, model_predictions: torch.Tensor, ground_truths: torch.Tensor) -> torch.Tensor:
         """
         Calculates the binary cross entropy loss.
         
         Args:
-            predictions (torch.Tensor): The raw logit predictions from the model.
-            ground_truth (torch.Tensor): The binary ground truth masks.
+            model_predictions (torch.Tensor): The raw logit predictions from the model.
+            ground_truths (torch.Tensor): The binary ground truth masks.
                 
         Returns:
             torch.Tensor: The computed scalar loss value.
         """
-        return self.criterion(predictions, ground_truth)
+        return self.criterion(model_predictions, ground_truths)
