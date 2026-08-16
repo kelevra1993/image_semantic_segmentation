@@ -100,7 +100,7 @@ uv run app/main.py
 When training is launched, you will receive a terminal summary of the configurations you have set. This initialization output ensures you are fully aware of where important inputs (like your dataset splits) and outputs (like your saved weights and TensorBoard logs) are located. Crucially, it provides clickable file links in compatible terminals so you can instantly navigate your project structure. It should look something like this:
 
 <p align="center">
-  <img src="README/experiment-information.png" width="70%" />
+  <img src="README/experiment-information.png" width="100%" />
 </p>
 
 Additionally, you will get a printed view of the model architecture being used. This project utilizes a **U-Net** architecture, a convolutional neural network designed for biomedical image segmentation. The core details of the U-Net include:
@@ -111,7 +111,7 @@ Additionally, you will get a printed view of the model architecture being used. 
 The architecture output in your terminal should look something like this:
 
 <p align="center">
-  <img src="README/model-architecture-output.png" width="70%" />
+  <img src="README/model-architecture-output.png" width="100%" />
 </p>
 
 Once training has commenced, the script will output periodic terminal logs detailing the progression of the model. You will see rolling averages for:
@@ -125,7 +125,7 @@ At specific intervals (defined by `weight_saving_iterations` in your configurati
 The on-the-fly training logs will look like this:
 
 <p align="center">
-  <img src="README/on-fly-train-logs.png" width="90%" />
+  <img src="README/on-fly-train-logs.png" width="100%" />
 </p>
 
 Additionally, the inferred image samples generated for debugging will look like this:
