@@ -56,7 +56,7 @@ class Trainer:
         self.information_dump = self.experiment_configuration["information_dump"]
         self.learning_rate = self.experiment_configuration["learning_rate"]
 
-        self.input_size = self.experiment_configuration["input_size"]
+        self.expected_input_size = self.experiment_configuration["expected_input_size"]
         self.batch_size = self.experiment_configuration["batch_size"]
         self.compute_validation_iteration = self.experiment_configuration["compute_validation_iteration"]
         self.resume_training = self.experiment_configuration["resume_training"]
@@ -96,7 +96,7 @@ class Trainer:
         # Print experiment information to user so that they can know everything about the experiment
         # as well as input and output shapes of the model.
         self.print_experiment_information()
-        self.model.print_summary(image_size=(self.input_size,self.input_size))
+        self.model.print_summary(expected_image_size=(self.expected_input_size, self.expected_input_size))
 
     def setup_criterion(self) -> torch.nn.Module:
         """

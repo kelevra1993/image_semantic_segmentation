@@ -1,9 +1,9 @@
 ExperimentConfiguration:
   project_root: "/home/robert_kelevra/Projects/image_semantic_segmentation/experiments_folder/experiment_3"
   dataset_folder: "/home/robert_kelevra/Projects/image_semantic_segmentation/ultrasound_dataset/preprocessed_384_KAR"
-  input_size: 384
-  information_dump: 5
-  weight_saving_iterations: 2000
+  expected_input_size: 384
+  information_dump: 50
+  weight_saving_iterations: 100
   number_iterations: 1e6
   learning_rate: 2.0e-4
   loss: "focal" # Choose either "classic" for classic cross entropy loss or "focal" for focal loss
