@@ -1,20 +1,45 @@
-# Image Semantic Segmentation Pipeline
+<h1 align="center">Image Semantic Segmentation Pipeline</h1>
+
+<p align="center">
+  <img src="README/progression-sample-1.gif" width="35%" />
+  <img src="README/progression-sample-2.gif" width="35%" />
+</p>
+
 
 ## Table of Contents
 - [Project Description](#project-description)
 - [Prerequisites](#prerequisites)
+  - [Package Requirements](#package-requirements)
+  - [Data Requirements](#data-requirements)
 
 ## Project Description
-This repository contains a modular PyTorch training pipeline for image semantic segmentation. It utilizes a customizable U-Net architecture to classify pixels into multiple labels (such as original, object_square, object_b, object_plus). 
+This repository contains a PyTorch training pipeline for image semantic segmentation. It utilizes a U-Net architecture to segment and classify pixels on the Breast Ultrasound Images Dataset into multiple labels, including tumor, square, letter B, and plus sign.
 
 The codebase features:
-- A robust trainer with support for resuming training.
-- Focal loss computation.
-- Periodic validation and model checkpointing.
+- Automated dataset retrieval and preprocessing from Kaggle.
+  - This is how we get the tumor class.
+- Generation of synthetic dummy masks for multi-class training.
+  - This is used in order to test multi-label segmentation since the original data only has one class.
 - Configuration management via YAML files to adjust hyperparameters, dataset paths, and U-Net structural parameters.
-- Clear separation of concerns across modules like `trainer`, `model`, `loss`, and `utilities`.
+  - More details are given in the configuration section that will be detailed later.
 
 ## Prerequisites
-- Python 3.8+
-- PyTorch
-- Additional requirements as specified in project configuration files.
+
+### Package Requirements
+- Python 3.12+
+- uv
+
+To install the project requirements, simply run:
+
+```bash
+uv sync
+```
+
+### Data Requirements
+This project uses the Breast Ultrasound Images Dataset from Kaggle, which provides ultrasound scans along with their corresponding tumor masks. Our data pipeline automatically downloads the raw data, cleans it, and generates synthetic shapes (squares, letter B, and plus signs) to simulate a multi-class segmentation task.
+
+To retrieve, preprocess, and split the data into training, validation, and testing sets, run the data retrieval script from the project root:
+
+```bash
+uv run app/utilities/data_utilities/data_retrieval.py
+```
