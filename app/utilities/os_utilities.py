@@ -326,3 +326,32 @@ def load_experiment_configuration(configuration_path: str | Path) -> Tuple[Dict[
         experiment_configuration["dtype"] = dtype_map.get(experiment_configuration["dtype"], torch.float32)
 
     return experiment_configuration, model_configuration
+
+
+def save_test_evaluation_csv(experiment_folder: Path, iteration: int, loss: float, iou_per_class: dict[str, float]) -> None:
+    """
+    Saves the test evaluation results (loss and per-class IoU) to a CSV file.
+    Uses ';' as the delimiter.
+
+    Args:
+        experiment_folder (Path): The root directory of the experiment where the CSV will be saved.
+        iteration (int): The current training iteration.
+        loss (float): The total test loss.
+        iou_per_class (dict[str, float]): A dictionary mapping class names to their computed IoU score.
+    """
+    import csv
+    file_path = experiment_folder / "test_evaluation_results.csv"
+    file_exists = file_path.exists()
+    
+    with open(file_path, "a", newline='') as f:
+        headers = ["Iteration", "Total Loss"] + [f"IoU {k.capitalize()}" for k in iou_per_class.keys()]
+        writer = csv.DictWriter(f, fieldnames=headers, delimiter=";")
+        
+        if not file_exists:
+            writer.writeheader()
+            
+        row = {"Iteration": iteration, "Total Loss": f"{loss:.4f}"}
+        for k, v in iou_per_class.items():
+            row[f"IoU {k.capitalize()}"] = f"{v:.4f}"
+            
+        writer.writerow(row)
