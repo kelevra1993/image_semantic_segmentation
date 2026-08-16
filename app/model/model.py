@@ -213,6 +213,7 @@ class UnetModel(nn.Module):
         first_convolution = self.encoder_blocks[0].block[0]
         input_channels = first_convolution.in_channels
 
+        # Create a dummy tensor with the correct device to trace dimensions through the architecture
         dummy_tensor = torch.zeros((1, input_channels, image_size[0], image_size[1]))
         device_type = next(self.parameters()).device
         dummy_tensor = dummy_tensor.to(device_type)
@@ -221,32 +222,41 @@ class UnetModel(nn.Module):
 
         print(f"Input image shape: {list(dummy_tensor.shape)}")
 
+        # Initialize the list to store encoder features for later skip connections
         encoder_features = []
 
         print_red("--- Downscaling Path (Encoder) ---", add_separators=True, upper_space=1)
+        
+        # Iterate through each downsampling block to simulate the feature extraction path
         for index, block in enumerate(self.encoder_blocks):
             dummy_tensor = block(dummy_tensor)
             encoder_features.append(dummy_tensor)
             print(f" - Encoder Block {index}")
             print(f"   - Encoder Output Shape : {list(dummy_tensor.shape)}")
 
+            # Apply max pooling to halve spatial dimensions, except for the final bottleneck layer
             if index < len(self.encoder_blocks) - 1:
                 dummy_tensor = self.pooling_layer(dummy_tensor)
                 print(f"   - After MaxPool Shape  : {list(dummy_tensor.shape)}")
 
         print_red("--- Upscaling Path (Decoder) ---", add_separators=True, upper_space=1)
+        
+        # Iterate through the decoder blocks to simulate the upsampling and reconstruction path
         for index in range(len(self.decoder_blocks)):
             print(f" - Decoder Block {index}")
             print(f"   - Decoder Input Shape   : {list(dummy_tensor.shape)}")
 
+            # Upsample the current feature map and retrieve the corresponding skip connection
             dummy_tensor = self.up_convolutions[index](dummy_tensor)
             skip_connection_feature = encoder_features[-(index + 2)]
             print(f"   - Upsampled Input Shape : {list(dummy_tensor.shape)}")
             print(f"   - Skip Connection Shape : {list(skip_connection_feature.shape)}")
 
+            # Concatenate the upsampled features with the skip connection to provide high-resolution details
             dummy_tensor = torch.cat([skip_connection_feature, dummy_tensor], dim=1)
             dummy_tensor = self.decoder_blocks[index](dummy_tensor)
             print(f"   - Decoder Output Shape  : {list(dummy_tensor.shape)}")
 
+        # Apply the final convolutional layer to map the features to the desired number of output classes
         dummy_tensor = self.final_convolution(dummy_tensor)
         print_green(f"Final Convolution output shape: {list(dummy_tensor.shape)}", add_separators=True, upper_space=1)
