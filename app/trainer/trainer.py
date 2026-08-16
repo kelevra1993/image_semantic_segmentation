@@ -421,12 +421,11 @@ class Trainer:
         mean_iou_per_class = {label_name: (accumulated_iou / number_batches if number_batches > 0 else 0.0)
                               for label_name, accumulated_iou in total_iou.items()}
 
-        # Log to file
-        save_test_evaluation_csv(
-            experiment_folder=self.project_root,
-            iteration=iteration,
-            loss=mean_test_loss,
-            iou_per_class=mean_iou_per_class)
+        # Log to the results to a single file, for all the saved iterations of the given architecture.
+        save_test_evaluation_csv(experiment_folder=self.project_root,
+                                 iteration=iteration,
+                                 loss=mean_test_loss,
+                                 iou_per_class=mean_iou_per_class)
 
         # Run sample predictions for visualization
         self.run_sample_predictions(iteration=iteration, number_samples=20)
@@ -460,28 +459,51 @@ class Trainer:
                 test_masks = test_masks.to(device=self.device, dtype=self.dtype)
 
                 model_outputs = self.model(test_images)
-                predicted_masks = (torch.sigmoid(model_outputs) > 0.5).to(self.dtype)
+                
+                # For mutually exclusive multi-channel classification, the channel with the max 
+                # logit is the predicted class. This avoids a computationally expensive softmax.
+                max_logits = model_outputs.max(dim=1, keepdim=True).values
+                predicted_masks = (model_outputs == max_logits).to(self.dtype)
 
                 batch_size_current = test_images.size(0)
-                for i in range(batch_size_current):
+                for sample_index in range(batch_size_current):
 
                     if samples_processed >= number_samples:
                         break
 
-                    img_to_add = test_images[i:i + 1]  # (1, C, H, W)
-                    if img_to_add.shape[1] == 3:
-                        img_to_add = img_to_add.mean(dim=1, keepdim=True)
+                    # Extract the current input image from the batch
+                    input_image_tensor = test_images[sample_index:sample_index + 1]
+                    
+                    # Convert RGB images to grayscale by averaging across the channel dimension
+                    # This ensures the input image can be concatenated into the same visualization grid 
+                    # alongside the single-channel ground truth and predicted masks without shape mismatches
+                    if input_image_tensor.shape[1] == 3:
+                        input_image_tensor = input_image_tensor.mean(dim=1, keepdim=True)
 
-                    components = [img_to_add]
-                    for c in range(test_masks.shape[1]):
-                        components.append(test_masks[i:i + 1, c:c + 1, :, :])
-                    for c in range(predicted_masks.shape[1]):
-                        components.append(predicted_masks[i:i + 1, c:c + 1, :, :])
+                    # Initialize the list for the top row containing the original image and ground truth masks
+                    top_row_components = [input_image_tensor]
+                    for channel_index in range(test_masks.shape[1]):
+                        top_row_components.append(
+                            test_masks[sample_index:sample_index + 1, channel_index:channel_index + 1, :, :])
 
-                    comparison_grid = torch.cat(components, dim=0)
+                    # Create a blank placeholder tensor to align underneath the original input image
+                    empty_placeholder = torch.zeros_like(input_image_tensor)
+
+                    # Initialize the list for the bottom row containing the placeholder and predicted masks
+                    bottom_row_components = [empty_placeholder]
+                    for channel_index in range(predicted_masks.shape[1]):
+                        bottom_row_components.append(
+                            predicted_masks[sample_index:sample_index + 1, channel_index:channel_index + 1, :, :])
+
+                    # Combine both rows into a single list of tensors to form the final grid
+                    all_components = top_row_components + bottom_row_components
+                    comparison_grid = torch.cat(all_components, dim=0)
+
+                    # Determine the number of columns to correctly wrap the grid into two distinct rows
+                    number_of_columns = len(top_row_components)
 
                     output_path = output_directory / f"sample_{samples_processed:04d}.png"
-                    torchvision.utils.save_image(comparison_grid, output_path, nrow=5)
+                    torchvision.utils.save_image(comparison_grid, output_path, nrow=number_of_columns)
 
                     samples_processed += 1
 
@@ -501,7 +523,10 @@ class Trainer:
         Returns:
             dict[str, torch.Tensor]: A dictionary mapping class IoU keys to their calculated tensor values.
         """
-        predicted_masks = (torch.sigmoid(predictions) > 0.5).to(self.dtype)
+        # Determine the winning class per pixel by finding the maximum logit across channels
+        max_logits = predictions.max(dim=1, keepdim=True).values
+        predicted_masks = (predictions == max_logits).to(self.dtype)
+        
         ious = {}
 
         for label_name, index in self.experiment_configuration["label_dictionary"].items():
