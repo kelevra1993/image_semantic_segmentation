@@ -28,7 +28,8 @@ def main() -> None:
 
     # Start training loop
     print_blue(f"Starting Training For Experiment At: file://{experiment_configuration['project_root']}...")
-    trainer.run_training_loop()
+    # trainer.run_training_loop()
+    trainer.run_benchmarking_loop()
     print("Training Example Completed.")
 
 
