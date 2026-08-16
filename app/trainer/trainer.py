@@ -89,7 +89,8 @@ class Trainer:
             self.start_iteration = self.restore_last_model()
 
         # Metric tracking
-        self.tracked_metrics_mapping = {"total_loss": "Total BCE Loss"}
+        self.tracked_metrics_mapping = {
+            "total_loss": f"Total {self.experiment_configuration['loss'].capitalize()} Loss"}
         for label_name, index in self.experiment_configuration["label_dictionary"].items():
             self.tracked_metrics_mapping[f"iou_{label_name}"] = f"IoU {label_name.capitalize()}"
 
@@ -370,7 +371,9 @@ class Trainer:
                         validation_trackers = self.get_metric_trackers()
 
         except KeyboardInterrupt:
-            print_red(f"\nTraining Interrupted by User at iteration {training_iteration}.", add_separators=True)
+            print_red(f"Training Interrupted by User at iteration {training_iteration}.", add_separators=True)
+        except:
+            print_red(f"An Error Occurred During Training", add_separators=True)
         finally:
             self.save_model(iteration=training_iteration)
             print_green(f"Model successfully saved at iteration {training_iteration}. Exiting Training.",
@@ -387,7 +390,6 @@ class Trainer:
         Args:
             iteration (int): The current training iteration index.
         """
-        print(f"Starting Full Test Evaluation at Iteration {iteration}...")
         self.model.eval()
 
         total_test_loss = 0.0
@@ -400,7 +402,7 @@ class Trainer:
                 test_masks = test_masks.to(device=self.device, dtype=self.dtype)
 
                 model_outputs = self.model(test_images)
-                loss = self.criterion(predictions=model_outputs, ground_truth=test_masks)
+                loss = self.criterion(model_predictions=model_outputs, ground_truths=test_masks)
 
                 total_test_loss += loss.item()
 
@@ -413,10 +415,11 @@ class Trainer:
             f.write("+" + "-" * 50 + "\n")
             f.write(f"| Iteration: {iteration:<38} |\n")
             f.write("+" + "-" * 50 + "\n")
-            f.write(f"| {'Total BCE Loss':<35} : {mean_test_loss:<8.4f} |\n")
+            f.write(f"| {'Total Loss':<35} : {mean_test_loss:<8.4f} |\n")
             f.write("+" + "-" * 50 + "\n\n")
 
-        print(f"Full Test Evaluation Completed. Results appended to {evaluation_file}")
+        print(f"Full Test Evaluation Completed, Results Appended To :")
+        print(f"- file://{evaluation_file}")
 
         # Run sample predictions for visualization
         self.run_sample_predictions(iteration=iteration, number_samples=20)
@@ -430,7 +433,7 @@ class Trainer:
             iteration (int): The current training iteration index.
             number_samples (int): The maximum number of test samples to process.
         """
-        print(f"Running {number_samples} Sample Predictions for Iteration {iteration}...")
+        print(f"\nRunning {number_samples} Sample Predictions for Iteration {iteration}...")
 
         output_directory = self.weights_directory / f"Iteration_{iteration}" / "test_sample_predictions"
         output_directory.mkdir(exist_ok=True, parents=True)
@@ -475,7 +478,8 @@ class Trainer:
 
                     samples_processed += 1
 
-        print_green(f"Successfully saved {samples_processed} sample predictions to {output_directory}")
+        print_green(f"- file://{output_directory}")
+        exit()
 
     def intersection_over_union_per_class(self, predictions: torch.Tensor, targets: torch.Tensor,
                                           smooth: float = 1e-6) -> dict[str, torch.Tensor]:
@@ -559,14 +563,15 @@ class Trainer:
         model_directory.mkdir(exist_ok=True, parents=True)
 
         checkpoint_path = model_directory / f"model_{iteration:06}.pt"
-        print(f"Saving Checkpoint At : {checkpoint_path}...")
+
 
         torch.save({
             'iteration': iteration,
             'model_state': self.model.state_dict(),
             'optimizer_state': self.optimizer.state_dict()}, checkpoint_path)
 
-        print("Checkpoint Successfully Saved.")
+        print(f"Checkpoint Folder : file://{model_directory}...")
+        print(f" - Model Saved In : model_{iteration:06}.pt")
 
         # Update the full-checkpoint registry
         self.dump_in_checkpoint(iteration=iteration)
@@ -709,18 +714,18 @@ class Trainer:
         Returns:
             Dict[str, Any]: A fresh training tracker dictionary for the next interval.
         """
-        print_length = 100
+        print_length = 60
         print("-" * print_length)
         print(f"Iteration: {iterations}")
 
         for metric_key, display_name in self.tracked_metrics_mapping.items():
             train_value = training_tracker_dictionary[metric_key]
-            message = f"Moving Average of Train {display_name:36} : {train_value:.4f}"
+            message = f"Moving Average of Train {display_name:20} : {train_value:.4f}"
             print_blue(message)
 
             if validation_tracker_dictionary is not None:
                 validation_value = validation_tracker_dictionary[metric_key]
-                validation_message = f"Moving Average of Valid {display_name:36} : {validation_value:.4f}"
+                validation_message = f"Moving Average of Valid {display_name:20} : {validation_value:.4f}"
                 print_yellow(validation_message)
 
         duration = time.time() - training_tracker_dictionary['start_time']
