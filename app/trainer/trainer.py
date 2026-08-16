@@ -18,6 +18,7 @@ from app.loss.focal_loss import FocalLoss
 from app.utilities.os_utilities import load_configuration, print_red, print_green, print_blue, print_yellow, \
     save_test_evaluation_csv
 from app.utilities.tensor_utilities import get_device, print_tensor_status, print_tensor_list, print_tensor_shape
+from app.utilities.model_utilities import create_evaluation_row_for_channel
 from app.model.model import UnetModel
 from app.utilities.data_utilities.dataloader import get_dataloaders
 from torch.utils.data.dataloader import _BaseDataLoaderIter
@@ -373,8 +374,9 @@ class Trainer:
 
         except KeyboardInterrupt:
             print_red(f"Training Interrupted by User at iteration {training_iteration}.", add_separators=True)
-        except:
+        except Exception as error:
             print_red(f"An Error Occurred During Training", add_separators=True)
+            print(error)
         finally:
             self.save_model(iteration=training_iteration)
             print_green(f"Model successfully saved at iteration {training_iteration}. Exiting Training.",
@@ -439,7 +441,7 @@ class Trainer:
             iteration (int): The current training iteration index.
             number_samples (int): The maximum number of test samples to process.
         """
-        print(f"\nRunning {number_samples} Sample Predictions for Iteration {iteration}...")
+        print(f"\nRunning {number_samples} Sample Predictions For Iteration {iteration}...")
 
         output_directory = self.weights_directory / f"Iteration_{iteration}" / "test_sample_predictions"
         output_directory.mkdir(exist_ok=True, parents=True)
@@ -459,7 +461,7 @@ class Trainer:
                 test_masks = test_masks.to(device=self.device, dtype=self.dtype)
 
                 model_outputs = self.model(test_images)
-                
+
                 # For mutually exclusive multi-channel classification, the channel with the max 
                 # logit is the predicted class. This avoids a computationally expensive softmax.
                 max_logits = model_outputs.max(dim=1, keepdim=True).values
@@ -473,42 +475,38 @@ class Trainer:
 
                     # Extract the current input image from the batch
                     input_image_tensor = test_images[sample_index:sample_index + 1]
-                    
+
                     # Convert RGB images to grayscale by averaging across the channel dimension
                     # This ensures the input image can be concatenated into the same visualization grid 
                     # alongside the single-channel ground truth and predicted masks without shape mismatches
                     if input_image_tensor.shape[1] == 3:
                         input_image_tensor = input_image_tensor.mean(dim=1, keepdim=True)
 
-                    # Initialize the list for the top row containing the original image and ground truth masks
-                    top_row_components = [input_image_tensor]
+                    # Create a comprehensive evaluation grid for this sample, stacking rows for each channel
+                    all_components = []
                     for channel_index in range(test_masks.shape[1]):
-                        top_row_components.append(
-                            test_masks[sample_index:sample_index + 1, channel_index:channel_index + 1, :, :])
+                        ground_truth_channel = test_masks[
+                            sample_index:sample_index + 1, channel_index:channel_index + 1, :, :]
+                        prediction_channel = predicted_masks[
+                            sample_index:sample_index + 1, channel_index:channel_index + 1, :, :]
 
-                    # Create a blank placeholder tensor to align underneath the original input image
-                    empty_placeholder = torch.zeros_like(input_image_tensor)
+                        # Generate the visualization row (Ground Truth, Prediction, Error Map, Boundary Overlay)
+                        row_components = create_evaluation_row_for_channel(
+                            original_image=input_image_tensor,
+                            ground_truth=ground_truth_channel,
+                            prediction=prediction_channel)
+                        all_components.extend(row_components)
 
-                    # Initialize the list for the bottom row containing the placeholder and predicted masks
-                    bottom_row_components = [empty_placeholder]
-                    for channel_index in range(predicted_masks.shape[1]):
-                        bottom_row_components.append(
-                            predicted_masks[sample_index:sample_index + 1, channel_index:channel_index + 1, :, :])
-
-                    # Combine both rows into a single list of tensors to form the final grid
-                    all_components = top_row_components + bottom_row_components
                     comparison_grid = torch.cat(all_components, dim=0)
 
-                    # Determine the number of columns to correctly wrap the grid into two distinct rows
-                    number_of_columns = len(top_row_components)
+                    # Determine the number of columns to wrap properly (5 images per channel row)
+                    number_of_columns = 5
 
                     output_path = output_directory / f"sample_{samples_processed:04d}.png"
                     torchvision.utils.save_image(comparison_grid, output_path, nrow=number_of_columns)
-
                     samples_processed += 1
 
         print_green(f"- file://{output_directory}")
-        exit()
 
     def intersection_over_union_per_class(self, predictions: torch.Tensor, targets: torch.Tensor,
                                           smooth: float = 1e-6) -> dict[str, torch.Tensor]:
@@ -526,7 +524,7 @@ class Trainer:
         # Determine the winning class per pixel by finding the maximum logit across channels
         max_logits = predictions.max(dim=1, keepdim=True).values
         predicted_masks = (predictions == max_logits).to(self.dtype)
-        
+
         ious = {}
 
         for label_name, index in self.experiment_configuration["label_dictionary"].items():
