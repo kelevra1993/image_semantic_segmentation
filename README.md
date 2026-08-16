@@ -14,6 +14,7 @@
 - [Configuration](#configuration)
 - [Training](#training)
 - [TensorBoard Monitoring](#tensorboard-monitoring)
+- [Repository Structure](#repository-structure)
 
 ## Project Description
 This repository contains a PyTorch training pipeline for image semantic segmentation. It utilizes a U-Net architecture to segment and classify pixels on the Breast Ultrasound Images Dataset into multiple labels, including tumor, square, letter B, and plus sign.
@@ -160,3 +161,41 @@ This will launch a web interface where you can track the performance of the mode
 <p align="center">
   <img src="README/tensorboard.png" width="90%" />
 </p>
+
+## Repository Structure
+
+Here is an overview of the repository's directory structure to help you easily navigate the source code, utilities, and configuration files:
+
+```text
+.
+├── README.md                              # This documentation file
+├── README/                                # Images used in the documentation
+├── pyproject.toml                         # Project package and dependency configuration
+├── uv.lock                                # Locked dependencies for reproducible environments
+├── app/                                   # Main application source code
+│   ├── main.py                            # Entry point for the training pipeline
+│   ├── configuration/
+│   │   └── configuration.yaml             # Core configuration file for training and model setup
+│   ├── loss/                              # Loss function implementations
+│   │   ├── bce_loss.py                    # Classic Binary Cross-Entropy loss wrapper
+│   │   └── focal_loss.py                  # Custom Focal Loss implementation for imbalanced data
+│   ├── model/
+│   │   └── model.py                       # U-Net PyTorch architecture implementation
+│   ├── trainer/
+│   │   └── trainer.py                     # Main Trainer class (handles loop, checkpointing, metrics)
+│   └── utilities/                         # Helper utilities
+│       ├── os_utilities.py                # Functions for file IO, saving CSVs, and console logging
+│       ├── tensor_utilities.py            # Device management and tensor debugging tools
+│       ├── model_utilities.py             # Tools to generate output overlays and error maps
+│       └── data_utilities/
+│           ├── data_retrieval.py          # Script to download dataset and generate synthetic masks
+│           ├── data_utilities.py          # Image preprocessing and resizing tools
+│           └── dataloader.py              # PyTorch Dataset and DataLoader implementations
+└── scripts/                               # Debugging scripts mimicking the app directory structure
+    ├── loss/
+    │   ├── debug_focal_loss.py            # Script for debugging focal loss implementation
+    │   └── focal_loss_functions.py        # Additional loss utility experiments
+    └── utilities/                         # Sandbox and test scripts for utility functions
+        ├── data_utilities/
+        └── model_utilities/
+```
