@@ -322,7 +322,7 @@ class Trainer:
         validation_dataloader_iterator = iter(self.validation_dataloader)
 
         # Get Metric Trackers
-        # Currently just BCE Loss
+        # Currently just Cross Entropy Loss
         training_trackers = self.get_metric_trackers()
         validation_trackers = self.get_metric_trackers() if self.compute_validation_iteration else None
 
