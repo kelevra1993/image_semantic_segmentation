@@ -1,5 +1,6 @@
 import torchvision
-from app.loss.bce_loss import BCELoss
+from app.loss.ce_loss import CrossEntropyLoss
+from app.loss.weighted_ce_loss import WeightedCrossEntropyLoss
 import os
 import csv
 import time
@@ -106,12 +107,17 @@ class Trainer:
         Initializes the loss function based on the configuration.
 
         Returns:
-            torch.nn.Module: The configured loss module (e.g., BCELoss or FocalLoss).
+            torch.nn.Module: The configured loss module (e.g., CrossEntropyLoss, WeightedCrossEntropyLoss, or FocalLoss).
         """
         loss_type = self.experiment_configuration.get("loss", "classic")
 
         if loss_type == "classic":
-            return BCELoss()
+            return CrossEntropyLoss()
+        elif loss_type == "weighted":
+            weighted_parameters = self.experiment_configuration.get("weighted_loss_parameters", {})
+            return WeightedCrossEntropyLoss(weights=weighted_parameters["weights"],
+                                            device=self.device,
+                                            dtype=self.dtype)
         elif loss_type == "focal":
             focal_parameters = self.experiment_configuration.get("focal_loss_parameters", {})
             return FocalLoss(alpha=focal_parameters["alpha"],
@@ -119,7 +125,7 @@ class Trainer:
                              device=self.device,
                              dtype=self.dtype)
         else:
-            raise ValueError(f"Unknown loss type: {loss_type}. Choose 'classic' or 'focal'.")
+            raise ValueError(f"Unknown loss type: {loss_type}. Choose 'classic', 'weighted', or 'focal'.")
 
     def print_experiment_information(self) -> None:
         """
@@ -543,12 +549,12 @@ class Trainer:
                             writer: Optional[SummaryWriter], iteration: int,
                             tracker_dictionary: dict | None) -> tuple[torch.Tensor, torch.Tensor]:
         """
-        Executes a single forward pass of the U-Net, computes the BCE loss,
+        Executes a single forward pass of the U-Net, computes the loss,
         and updates performance trackers.
 
         Args:
             batch_images (torch.Tensor): The input image tensor of shape (B, C, H, W).
-            batch_masks (torch.Tensor): The ground truth mask tensor of shape (B, 1, H, W).
+            batch_masks (torch.Tensor): The ground truth mask tensor of shape (B, number_classes, H, W).
             writer (Optional[SummaryWriter]): TensorBoard writer for logging. If None, logging is skipped.
             iteration (int): The current training iteration step.
             tracker_dictionary (Dict[str, Any] | None): Dictionary tracking rolling average metrics.
