@@ -61,7 +61,9 @@ ExperimentConfiguration:
   weight_saving_iterations: 1000       # Number of iterations between saving model checkpoints
   number_iterations: 1e5               # Total number of training iterations
   learning_rate: 2.0e-4                # Learning rate for the optimizer
-  loss: "focal"                        # Loss function to use: "classic" (CrossEntropy) or "focal"
+  loss: "focal"                        # Loss function to use: "classic" (CrossEntropy), "weighted", or "focal"
+  weighted_loss_parameters:
+    weights: [ 1.0, 1.0, 1.0, 1.0, 1.0 ] # Class weights for the weighted CE loss function
   focal_loss_parameters:
     alpha: [ 1.0, 2.0, 1.0, 1.0, 1.0 ] # Class weights for the focal loss function
     gamma: 0.75                        # Focusing parameter for the focal loss function
@@ -177,7 +179,8 @@ Here is an overview of the repository's directory structure to help you easily n
 │   ├── configuration/
 │   │   └── configuration.yaml             # Core configuration file for training and model setup
 │   ├── loss/                              # Loss function implementations
-│   │   ├── bce_loss.py                    # Classic Binary Cross-Entropy loss wrapper
+│   │   ├── ce_loss.py                     # Classic Cross-Entropy loss wrapper
+│   │   ├── weighted_ce_loss.py            # Weighted Cross-Entropy loss wrapper
 │   │   └── focal_loss.py                  # Custom Focal Loss implementation for imbalanced data
 │   ├── model/
 │   │   └── model.py                       # U-Net PyTorch architecture implementation
